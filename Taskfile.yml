@@ -112,3 +112,14 @@ tasks:
     cmds:
       - go install github.com/air-verse/air@latest
       - echo "Tools installed ✓"
+
+  # ---------- Docker ----------
+  docker:build:
+    desc: Build docker image
+    cmds:
+      - docker build -t ghcr.io/cpnext-hub/{{.APP_NAME}}:latest .
+
+  docker:push:
+    desc: Push docker image to registry
+    cmds:
+      - docker push ghcr.io/cpnext-hub/{{.APP_NAME}}:latest
