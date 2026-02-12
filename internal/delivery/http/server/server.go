@@ -1,19 +1,33 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/config"
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/delivery/http/handler"
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/delivery/http/middleware"
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/delivery/http/router"
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/usecase"
+	"github.com/CPNext-hub/calendar-reg-main-api/internal/infrastructure/mongodb"
 	"github.com/gofiber/fiber/v2"
 )
 
 // Start initialises dependencies and starts the HTTP server.
 func Start(cfg *config.Config) {
+	ctx := context.Background()
+
+	// ---------- MongoDB ----------
+	mongo, err := mongodb.Connect(ctx, cfg.MongoHost, cfg.MongoDBName, cfg.MongoUser, cfg.MongoPassword)
+	if err != nil {
+		log.Fatalf("Failed to connect to MongoDB: %v", err)
+	}
+
+	// ---------- Fiber ----------
 	app := fiber.New(fiber.Config{
 		AppName: cfg.AppName,
 	})
@@ -26,16 +40,43 @@ func Start(cfg *config.Config) {
 	versionUC := usecase.NewVersionUsecase(cfg.AppName, cfg.AppVersion, cfg.AppEnv)
 
 	// handlers
-	healthHandler := handler.NewHealthHandler(healthUC)
-	versionHandler := handler.NewVersionHandler(versionUC)
+	h := &router.Handlers{
+		Health:    handler.NewHealthHandler(healthUC),
+		Version:   handler.NewVersionHandler(versionUC),
+		MongoTest: handler.NewMongoTestHandler(mongo),
+	}
 
 	// routes
-	router.SetupRoutes(app, healthHandler, versionHandler)
+	router.SetupRoutes(app, h)
 
-	// start
-	addr := fmt.Sprintf(":%s", cfg.Port)
-	log.Printf("Server starting on %s (env=%s)", addr, cfg.AppEnv)
-	if err := app.Listen(addr); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+	// ---------- Graceful Shutdown ----------
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		addr := fmt.Sprintf(":%s", cfg.Port)
+		log.Printf("Server starting on %s (env=%s)", addr, cfg.AppEnv)
+		if err := app.Listen(addr); err != nil {
+			log.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+
+	// wait for interrupt signal
+	sig := <-quit
+	log.Printf("Received signal %s, shutting down...", sig)
+
+	// shutdown Fiber
+	if err := app.Shutdown(); err != nil {
+		log.Printf("Fiber shutdown error: %v", err)
 	}
+
+	// disconnect MongoDB
+	if err := mongo.Disconnect(ctx); err != nil {
+		log.Printf("MongoDB disconnect error: %v", err)
+	}
+
+	log.Println("Server stopped gracefully")
+
+	// mongo variable is available here for future use with repositories:
+	// _ = mongo.Database()
 }
