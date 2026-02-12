@@ -12,6 +12,7 @@ type Handlers struct {
 	Health    *handler.HealthHandler
 	Version   *handler.VersionHandler
 	MongoTest *handler.MongoTestHandler
+	Course    *handler.CourseHandler
 }
 
 // SetupRoutes registers all routes on the Fiber app.
@@ -20,6 +21,13 @@ func SetupRoutes(app *fiber.App, h *Handlers) {
 
 	api.Get("/status", h.Health.GetStatus)
 	api.Get("/version", h.Version.GetVersion)
+
+	// ---------- Course routes ----------
+	courses := api.Group("/courses")
+	courses.Post("/", h.Course.CreateCourse)
+	courses.Get("/", h.Course.GetCourses)
+	courses.Get("/:code", h.Course.GetCourse)
+	courses.Delete("/:code", h.Course.DeleteCourse)
 
 	// Swagger
 	app.Get("/swagger/*", fiberSwagger.WrapHandler)
