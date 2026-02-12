@@ -15,18 +15,18 @@ const courseCollection = "courses"
 
 // courseModel is the MongoDB-specific representation of a course (bson tags live here).
 type courseModel struct {
-	ID        string    `bson:"_id,omitempty"`
-	Code      string    `bson:"code"`
-	Name      string    `bson:"name"`
-	Credits   string    `bson:"credits"`
-	CreatedAt time.Time `bson:"created_at"`
-	UpdatedAt time.Time `bson:"updated_at"`
+	ID        bson.ObjectID `bson:"_id,omitempty"`
+	Code      string        `bson:"code"`
+	Name      string        `bson:"name"`
+	Credits   string        `bson:"credits"`
+	CreatedAt time.Time     `bson:"created_at"`
+	UpdatedAt time.Time     `bson:"updated_at"`
 }
 
 // toEntity converts a MongoDB model to a domain entity.
 func (m *courseModel) toEntity() *entity.Course {
 	return &entity.Course{
-		ID:        m.ID,
+		ID:        m.ID.Hex(),
 		Code:      m.Code,
 		Name:      m.Name,
 		Credits:   m.Credits,
@@ -37,14 +37,20 @@ func (m *courseModel) toEntity() *entity.Course {
 
 // toCourseModel converts a domain entity to a MongoDB model.
 func toCourseModel(e *entity.Course) *courseModel {
-	return &courseModel{
-		ID:        e.ID,
+	m := &courseModel{
 		Code:      e.Code,
 		Name:      e.Name,
 		Credits:   e.Credits,
 		CreatedAt: e.CreatedAt,
 		UpdatedAt: e.UpdatedAt,
 	}
+	if e.ID != "" {
+		oid, err := bson.ObjectIDFromHex(e.ID)
+		if err == nil {
+			m.ID = oid
+		}
+	}
+	return m
 }
 
 type courseRepository struct {
