@@ -15,35 +15,37 @@ const courseCollection = "courses"
 
 // courseModel is the MongoDB-specific representation of a course (bson tags live here).
 type courseModel struct {
-	ID        bson.ObjectID `bson:"_id,omitempty"`
-	Code      string        `bson:"code"`
-	Name      string        `bson:"name"`
-	Credits   string        `bson:"credits"`
-	CreatedAt time.Time     `bson:"created_at"`
-	UpdatedAt time.Time     `bson:"updated_at"`
+	baseModel `bson:",inline"`
+	Code      string `bson:"code"`
+	Name      string `bson:"name"`
+	Credits   string `bson:"credits"`
 }
 
 // toEntity converts a MongoDB model to a domain entity.
 func (m *courseModel) toEntity() *entity.Course {
 	return &entity.Course{
-		ID:        m.ID.Hex(),
-		Code:      m.Code,
-		Name:      m.Name,
-		Credits:   m.Credits,
-		CreatedAt: m.CreatedAt,
-		UpdatedAt: m.UpdatedAt,
+		BaseEntity: entity.BaseEntity{
+			ID:        m.ID.Hex(),
+			CreatedAt: m.CreatedAt,
+			UpdatedAt: m.UpdatedAt,
+			DeletedAt: m.DeletedAt,
+		},
+		Code:    m.Code,
+		Name:    m.Name,
+		Credits: m.Credits,
 	}
 }
 
 // toCourseModel converts a domain entity to a MongoDB model.
 func toCourseModel(e *entity.Course) *courseModel {
 	m := &courseModel{
-		Code:      e.Code,
-		Name:      e.Name,
-		Credits:   e.Credits,
-		CreatedAt: e.CreatedAt,
-		UpdatedAt: e.UpdatedAt,
+		Code:    e.Code,
+		Name:    e.Name,
+		Credits: e.Credits,
 	}
+	m.CreatedAt = e.CreatedAt
+	m.UpdatedAt = e.UpdatedAt
+	m.DeletedAt = e.DeletedAt
 	if e.ID != "" {
 		oid, err := bson.ObjectIDFromHex(e.ID)
 		if err == nil {
@@ -71,8 +73,11 @@ func (r *courseRepository) Create(ctx context.Context, course *entity.Course) er
 	return err
 }
 
+// notDeleted is the filter to exclude soft-deleted documents.
+var notDeleted = bson.M{"deleted_at": bson.M{"$exists": false}}
+
 func (r *courseRepository) GetAll(ctx context.Context) ([]*entity.Course, error) {
-	cursor, err := r.db.Collection(courseCollection).Find(ctx, bson.M{})
+	cursor, err := r.db.Collection(courseCollection).Find(ctx, notDeleted)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +97,8 @@ func (r *courseRepository) GetAll(ctx context.Context) ([]*entity.Course, error)
 
 func (r *courseRepository) GetByCode(ctx context.Context, code string) (*entity.Course, error) {
 	var model courseModel
-	err := r.db.Collection(courseCollection).FindOne(ctx, bson.M{"code": code}).Decode(&model)
+	filter := bson.M{"code": code, "deleted_at": bson.M{"$exists": false}}
+	err := r.db.Collection(courseCollection).FindOne(ctx, filter).Decode(&model)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, nil
@@ -102,15 +108,17 @@ func (r *courseRepository) GetByCode(ctx context.Context, code string) (*entity.
 	return model.toEntity(), nil
 }
 
-func (r *courseRepository) Delete(ctx context.Context, code string) error {
-	result, err := r.db.Collection(courseCollection).DeleteOne(ctx, bson.M{"code": code})
+func (r *courseRepository) SoftDelete(ctx context.Context, code string) error {
+	now := time.Now()
+	filter := bson.M{"code": code, "deleted_at": bson.M{"$exists": false}}
+	update := bson.M{"$set": bson.M{"deleted_at": now, "updated_at": now}}
+
+	result, err := r.db.Collection(courseCollection).UpdateOne(ctx, filter, update)
 	if err != nil {
 		return err
 	}
-
-	if result.DeletedCount == 0 {
+	if result.MatchedCount == 0 {
 		return mongo.ErrNoDocuments
 	}
-
 	return nil
 }

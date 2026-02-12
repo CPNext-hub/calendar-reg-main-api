@@ -53,5 +53,13 @@ func (u *courseUsecase) GetCourseByCode(ctx context.Context, code string) (*enti
 }
 
 func (u *courseUsecase) DeleteCourse(ctx context.Context, code string) error {
-	return u.repo.Delete(ctx, code)
+	// Verify course exists before soft-deleting
+	existing, err := u.repo.GetByCode(ctx, code)
+	if err != nil {
+		return err
+	}
+	if existing == nil {
+		return errors.New("course not found")
+	}
+	return u.repo.SoftDelete(ctx, code)
 }
