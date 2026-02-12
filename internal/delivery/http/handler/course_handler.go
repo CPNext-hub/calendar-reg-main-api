@@ -1,0 +1,123 @@
+package handler
+
+import (
+	"context"
+	"time"
+
+	"github.com/CPNext-hub/calendar-reg-main-api/internal/delivery/http/adapter"
+	"github.com/CPNext-hub/calendar-reg-main-api/internal/delivery/http/dto"
+	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/usecase"
+	"github.com/CPNext-hub/calendar-reg-main-api/pkg/response"
+	"github.com/gofiber/fiber/v2"
+)
+
+// CourseHandler handles HTTP requests for courses.
+type CourseHandler struct {
+	usecase usecase.CourseUsecase
+}
+
+// NewCourseHandler creates a new CourseHandler instance.
+func NewCourseHandler(uc usecase.CourseUsecase) *CourseHandler {
+	return &CourseHandler{usecase: uc}
+}
+
+// CreateCourse creates a new course.
+// @Summary Create a new course
+// @Description Create a new course with code, name, and credits
+// @Tags courses
+// @Accept json
+// @Produce json
+// @Param request body dto.CreateCourseRequest true "Course Request"
+// @Success 201 {object} dto.CourseResponse
+// @Failure 400 {object} interface{}
+// @Failure 500 {object} interface{}
+// @Router /courses [post]
+func (h *CourseHandler) CreateCourse(c *fiber.Ctx) error {
+	var req dto.CreateCourseRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.BadRequest(adapter.NewFiberResponder(c), "Invalid request body")
+	}
+
+	if req.Code == "" || req.Name == "" || req.Credits == "" {
+		return response.BadRequest(adapter.NewFiberResponder(c), "Missing required fields")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := h.usecase.CreateCourse(ctx, req.Code, req.Name, req.Credits); err != nil {
+		return response.InternalError(adapter.NewFiberResponder(c), err.Error())
+	}
+
+	return response.Created(adapter.NewFiberResponder(c), req)
+}
+
+// GetCourses retrieves all courses.
+// @Summary Get all courses
+// @Description Retrieve a list of all courses
+// @Tags courses
+// @Accept json
+// @Produce json
+// @Success 200 {array} dto.CourseResponse
+// @Failure 500 {object} interface{}
+// @Router /courses [get]
+func (h *CourseHandler) GetCourses(c *fiber.Ctx) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	courses, err := h.usecase.GetAllCourses(ctx)
+	if err != nil {
+		return response.InternalError(adapter.NewFiberResponder(c), err.Error())
+	}
+
+	return response.OK(adapter.NewFiberResponder(c), dto.ToCourseResponses(courses))
+}
+
+// GetCourse retrieves a course by code.
+// @Summary Get course by code
+// @Description Retrieve a specific course details by its code
+// @Tags courses
+// @Accept json
+// @Produce json
+// @Param code path string true "Course Code"
+// @Success 200 {object} dto.CourseResponse
+// @Failure 404 {object} interface{}
+// @Failure 500 {object} interface{}
+// @Router /courses/{code} [get]
+func (h *CourseHandler) GetCourse(c *fiber.Ctx) error {
+	code := c.Params("code")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	course, err := h.usecase.GetCourseByCode(ctx, code)
+	if err != nil {
+		return response.InternalError(adapter.NewFiberResponder(c), err.Error())
+	}
+	if course == nil {
+		return response.NotFound(adapter.NewFiberResponder(c), "Course not found")
+	}
+
+	return response.OK(adapter.NewFiberResponder(c), dto.ToCourseResponse(course))
+}
+
+// DeleteCourse deletes a course by code.
+// @Summary Delete course by code
+// @Description Delete a course from the system
+// @Tags courses
+// @Accept json
+// @Produce json
+// @Param code path string true "Course Code"
+// @Success 200 {object} interface{}
+// @Failure 500 {object} interface{}
+// @Router /courses/{code} [delete]
+func (h *CourseHandler) DeleteCourse(c *fiber.Ctx) error {
+	code := c.Params("code")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := h.usecase.DeleteCourse(ctx, code); err != nil {
+		return response.InternalError(adapter.NewFiberResponder(c), err.Error())
+	}
+
+	return response.OK(adapter.NewFiberResponder(c), map[string]string{"message": "Course deleted"})
+}

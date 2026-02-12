@@ -14,6 +14,7 @@ import (
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/delivery/http/router"
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/usecase"
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/infrastructure/mongodb"
+	mongoRepo "github.com/CPNext-hub/calendar-reg-main-api/internal/infrastructure/repository/mongodb"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -39,11 +40,16 @@ func Start(cfg *config.Config) {
 	healthUC := usecase.NewHealthUsecase()
 	versionUC := usecase.NewVersionUsecase(cfg.AppName, cfg.AppVersion, cfg.AppEnv)
 
+	// repositories
+	courseRepo := mongoRepo.NewCourseRepository(mongo.Database())
+	courseUC := usecase.NewCourseUsecase(courseRepo)
+
 	// handlers
 	h := &router.Handlers{
 		Health:    handler.NewHealthHandler(healthUC),
 		Version:   handler.NewVersionHandler(versionUC),
 		MongoTest: handler.NewMongoTestHandler(mongo),
+		Course:    handler.NewCourseHandler(courseUC),
 	}
 
 	// routes
