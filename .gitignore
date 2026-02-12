@@ -34,3 +34,7 @@ tmp/
 # Editor/IDE
 .idea/
 .vscode/
+
+
+# JSON Posetman collections
+*.postman_collection.json
