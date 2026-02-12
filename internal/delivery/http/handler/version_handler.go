@@ -19,6 +19,13 @@ func NewVersionHandler(uc usecase.VersionUsecase) *VersionHandler {
 }
 
 // GetVersion returns the application name, version, and environment.
+// @Summary Get service version
+// @Description Get application version information
+// @Tags version
+// @Accept json
+// @Produce json
+// @Success 200 {object} dto.VersionResponse
+// @Router /version [get]
 func (h *VersionHandler) GetVersion(c *fiber.Ctx) error {
 	info := h.usecase.GetVersion()
 	res := dto.ToVersionResponse(info)

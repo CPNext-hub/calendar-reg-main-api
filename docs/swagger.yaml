@@ -1,0 +1,108 @@
+basePath: /api/v1
+definitions:
+  dto.HealthResponse:
+    properties:
+      status:
+        type: string
+      timestamp:
+        type: string
+    type: object
+  dto.MongoTestResult:
+    properties:
+      delete:
+        type: string
+      find:
+        type: string
+      insert:
+        type: string
+      ping:
+        type: string
+    type: object
+  dto.VersionResponse:
+    properties:
+      env:
+        type: string
+      name:
+        type: string
+      version:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+  description: This is the main API server for the Calendar Reg application.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Calendar Reg Main API
+  version: "1.0"
+paths:
+  /status:
+    get:
+      consumes:
+      - application/json
+      description: Get the current health status of the service
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.HealthResponse'
+      summary: Check service health
+      tags:
+      - health
+  /test/mongo/delete:
+    delete:
+      consumes:
+      - application/json
+      description: Delete all documents from the test collection
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Delete all test documents
+      tags:
+      - mongo
+  /test/mongo/full:
+    get:
+      consumes:
+      - application/json
+      description: 'Run a full test cycle: ping, insert, find, and delete'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MongoTestResult'
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Run full MongoDB test
+      tags:
+      - mongo
+  /version:
+    get:
+      consumes:
+      - application/json
+      description: Get application version information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.VersionResponse'
+      summary: Get service version
+      tags:
+      - version
+swagger: "2.0"

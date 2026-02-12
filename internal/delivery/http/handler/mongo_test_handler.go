@@ -89,7 +89,14 @@ func (h *MongoTestHandler) FindAll(c *fiber.Ctx) error {
 }
 
 // DeleteAll deletes all test documents from MongoDB.
-// DELETE /api/v1/test/mongo/delete
+// @Summary Delete all test documents
+// @Description Delete all documents from the test collection
+// @Tags mongo
+// @Accept json
+// @Produce json
+// @Success 200 {object} interface{}
+// @Failure 500 {object} interface{}
+// @Router /test/mongo/delete [delete]
 func (h *MongoTestHandler) DeleteAll(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -105,7 +112,14 @@ func (h *MongoTestHandler) DeleteAll(c *fiber.Ctx) error {
 }
 
 // FullTest runs a full cycle: ping → insert → find → delete.
-// GET /api/v1/test/mongo/full
+// @Summary Run full MongoDB test
+// @Description Run a full test cycle: ping, insert, find, and delete
+// @Tags mongo
+// @Accept json
+// @Produce json
+// @Success 200 {object} dto.MongoTestResult
+// @Failure 500 {object} interface{}
+// @Router /test/mongo/full [get]
 func (h *MongoTestHandler) FullTest(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

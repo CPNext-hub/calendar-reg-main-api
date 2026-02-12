@@ -19,6 +19,13 @@ func NewHealthHandler(uc usecase.HealthUsecase) *HealthHandler {
 }
 
 // GetStatus returns the current health status of the service.
+// @Summary Check service health
+// @Description Get the current health status of the service
+// @Tags health
+// @Accept json
+// @Produce json
+// @Success 200 {object} dto.HealthResponse
+// @Router /status [get]
 func (h *HealthHandler) GetStatus(c *fiber.Ctx) error {
 	status := h.usecase.GetStatus()
 	res := dto.ToHealthResponse(status)
