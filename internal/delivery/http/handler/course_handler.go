@@ -23,7 +23,7 @@ func NewCourseHandler(uc usecase.CourseUsecase) *CourseHandler {
 
 // CreateCourse creates a new course.
 // @Summary Create a new course
-// @Description Create a new course with code, name, and credits
+// @Description Create a new course with sections and schedules
 // @Tags courses
 // @Accept json
 // @Produce json
@@ -38,18 +38,19 @@ func (h *CourseHandler) CreateCourse(c *fiber.Ctx) error {
 		return response.BadRequest(adapter.NewFiberResponder(c), "Invalid request body")
 	}
 
-	if req.Code == "" || req.Name == "" || req.Credits == "" {
+	if req.Code == "" || req.NameEN == "" || req.Credits == "" {
 		return response.BadRequest(adapter.NewFiberResponder(c), "Missing required fields")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := h.usecase.CreateCourse(ctx, req.Code, req.Name, req.Credits); err != nil {
+	course := req.ToEntity()
+	if err := h.usecase.CreateCourse(ctx, course); err != nil {
 		return response.InternalError(adapter.NewFiberResponder(c), err.Error())
 	}
 
-	return response.Created(adapter.NewFiberResponder(c), req)
+	return response.Created(adapter.NewFiberResponder(c), dto.ToCourseResponse(course))
 }
 
 // GetCourses retrieves all courses.
