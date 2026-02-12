@@ -7,13 +7,12 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ghcr.io/cpnext-hub/calendar-reg-main-api
-  DEPLOY_REPO: CPNext-hub/deploy-calender-reg-kube
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
@@ -43,7 +42,6 @@ jobs:
       - name: Trigger Deployment Update
         uses: peter-evans/repository-dispatch@v3
         with:
-          token: ${{ secrets.PAT_TOKEN }}
-          repository: ${{ env.DEPLOY_REPO }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           event-type: update-image-tag
           client-payload: '{"image_tag": "sha-${{ steps.vars.outputs.sha_short }}"}'
