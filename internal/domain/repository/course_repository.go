@@ -11,5 +11,5 @@ type CourseRepository interface {
 	Create(ctx context.Context, course *entity.Course) error
 	GetAll(ctx context.Context) ([]*entity.Course, error)
 	GetByCode(ctx context.Context, code string) (*entity.Course, error)
-	Delete(ctx context.Context, code string) error
+	SoftDelete(ctx context.Context, code string) error
 }

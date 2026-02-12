@@ -101,8 +101,8 @@ func (h *CourseHandler) GetCourse(c *fiber.Ctx) error {
 }
 
 // DeleteCourse deletes a course by code.
-// @Summary Delete course by code
-// @Description Delete a course from the system
+// @Summary Soft delete course by code
+// @Description Soft delete a course (set deleted_at timestamp)
 // @Tags courses
 // @Accept json
 // @Produce json
