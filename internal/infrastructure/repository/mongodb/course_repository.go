@@ -145,8 +145,16 @@ func (r *courseRepository) Create(ctx context.Context, course *entity.Course) er
 	course.UpdatedAt = time.Now()
 
 	model := toCourseModel(course)
-	_, err := r.db.Collection(courseCollection).InsertOne(ctx, model)
-	return err
+	result, err := r.db.Collection(courseCollection).InsertOne(ctx, model)
+	if err != nil {
+		return err
+	}
+
+	// Write back the generated ID to the entity.
+	if oid, ok := result.InsertedID.(bson.ObjectID); ok {
+		course.ID = oid.Hex()
+	}
+	return nil
 }
 
 // notDeleted is the filter to exclude soft-deleted documents.
