@@ -4,9 +4,9 @@ import "github.com/CPNext-hub/calendar-reg-main-api/internal/domain/entity"
 
 // CreateCourseRequest represents the request body for creating a course.
 type CreateCourseRequest struct {
-	Code    string `json:"code" validate:"required"`
-	Name    string `json:"name" validate:"required"`
-	Credits string `json:"credits" validate:"required"`
+	Code    string `json:"code"`
+	Name    string `json:"name"`
+	Credits string `json:"credits"`
 }
 
 // CourseResponse represents the response body for a course.
