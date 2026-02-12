@@ -15,14 +15,56 @@ const courseCollection = "courses"
 
 // courseModel is the MongoDB-specific representation of a course (bson tags live here).
 type courseModel struct {
-	baseModel `bson:",inline"`
-	Code      string `bson:"code"`
-	Name      string `bson:"name"`
-	Credits   string `bson:"credits"`
+	baseModel    `bson:",inline"`
+	Code         string         `bson:"code"`
+	NameEN       string         `bson:"name_en"`
+	NameTH       string         `bson:"name_th"`
+	Faculty      string         `bson:"faculty"`
+	Credits      string         `bson:"credits"`
+	Prerequisite string         `bson:"prerequisite,omitempty"`
+	Semester     int            `bson:"semester"`
+	Year         int            `bson:"year"`
+	Program      string         `bson:"program"`
+	Sections     []sectionModel `bson:"sections"`
+}
+
+type sectionModel struct {
+	Number     string          `bson:"number"`
+	Schedules  []scheduleModel `bson:"schedules"`
+	Seats      int             `bson:"seats"`
+	Instructor string          `bson:"instructor"`
+	ExamDate   string          `bson:"exam_date,omitempty"`
+}
+
+type scheduleModel struct {
+	Day  string `bson:"day"`
+	Time string `bson:"time"`
+	Room string `bson:"room"`
+	Type string `bson:"type"`
 }
 
 // toEntity converts a MongoDB model to a domain entity.
 func (m *courseModel) toEntity() *entity.Course {
+	sections := make([]entity.Section, len(m.Sections))
+	for i, s := range m.Sections {
+		schedules := make([]entity.Schedule, len(s.Schedules))
+		for j, sc := range s.Schedules {
+			schedules[j] = entity.Schedule{
+				Day:  sc.Day,
+				Time: sc.Time,
+				Room: sc.Room,
+				Type: sc.Type,
+			}
+		}
+		sections[i] = entity.Section{
+			Number:     s.Number,
+			Schedules:  schedules,
+			Seats:      s.Seats,
+			Instructor: s.Instructor,
+			ExamDate:   s.ExamDate,
+		}
+	}
+
 	return &entity.Course{
 		BaseEntity: entity.BaseEntity{
 			ID:        m.ID.Hex(),
@@ -30,18 +72,52 @@ func (m *courseModel) toEntity() *entity.Course {
 			UpdatedAt: m.UpdatedAt,
 			DeletedAt: m.DeletedAt,
 		},
-		Code:    m.Code,
-		Name:    m.Name,
-		Credits: m.Credits,
+		Code:         m.Code,
+		NameEN:       m.NameEN,
+		NameTH:       m.NameTH,
+		Faculty:      m.Faculty,
+		Credits:      m.Credits,
+		Prerequisite: m.Prerequisite,
+		Semester:     m.Semester,
+		Year:         m.Year,
+		Program:      m.Program,
+		Sections:     sections,
 	}
 }
 
 // toCourseModel converts a domain entity to a MongoDB model.
 func toCourseModel(e *entity.Course) *courseModel {
+	sections := make([]sectionModel, len(e.Sections))
+	for i, s := range e.Sections {
+		schedules := make([]scheduleModel, len(s.Schedules))
+		for j, sc := range s.Schedules {
+			schedules[j] = scheduleModel{
+				Day:  sc.Day,
+				Time: sc.Time,
+				Room: sc.Room,
+				Type: sc.Type,
+			}
+		}
+		sections[i] = sectionModel{
+			Number:     s.Number,
+			Schedules:  schedules,
+			Seats:      s.Seats,
+			Instructor: s.Instructor,
+			ExamDate:   s.ExamDate,
+		}
+	}
+
 	m := &courseModel{
-		Code:    e.Code,
-		Name:    e.Name,
-		Credits: e.Credits,
+		Code:         e.Code,
+		NameEN:       e.NameEN,
+		NameTH:       e.NameTH,
+		Faculty:      e.Faculty,
+		Credits:      e.Credits,
+		Prerequisite: e.Prerequisite,
+		Semester:     e.Semester,
+		Year:         e.Year,
+		Program:      e.Program,
+		Sections:     sections,
 	}
 	m.CreatedAt = e.CreatedAt
 	m.UpdatedAt = e.UpdatedAt

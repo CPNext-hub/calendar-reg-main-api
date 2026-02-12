@@ -10,7 +10,7 @@ import (
 
 // CourseUsecase defines the business logic for courses.
 type CourseUsecase interface {
-	CreateCourse(ctx context.Context, code, name, credits string) error
+	CreateCourse(ctx context.Context, course *entity.Course) error
 	GetAllCourses(ctx context.Context) ([]*entity.Course, error)
 	GetCourseByCode(ctx context.Context, code string) (*entity.Course, error)
 	DeleteCourse(ctx context.Context, code string) error
@@ -25,20 +25,14 @@ func NewCourseUsecase(repo repository.CourseRepository) CourseUsecase {
 	return &courseUsecase{repo: repo}
 }
 
-func (u *courseUsecase) CreateCourse(ctx context.Context, code, name, credits string) error {
+func (u *courseUsecase) CreateCourse(ctx context.Context, course *entity.Course) error {
 	// Check if exists
-	existing, err := u.repo.GetByCode(ctx, code)
+	existing, err := u.repo.GetByCode(ctx, course.Code)
 	if err != nil {
 		return err
 	}
 	if existing != nil {
 		return errors.New("course code already exists")
-	}
-
-	course := &entity.Course{
-		Code:    code,
-		Name:    name,
-		Credits: credits,
 	}
 
 	return u.repo.Create(ctx, course)
