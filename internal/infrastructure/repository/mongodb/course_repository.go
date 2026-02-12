@@ -65,9 +65,14 @@ func (m *courseModel) toEntity() *entity.Course {
 		}
 	}
 
+	var id string
+	if m.ID != nil {
+		id = m.ID.Hex()
+	}
+
 	return &entity.Course{
 		BaseEntity: entity.BaseEntity{
-			ID:        m.ID.Hex(),
+			ID:        id,
 			CreatedAt: m.CreatedAt,
 			UpdatedAt: m.UpdatedAt,
 			DeletedAt: m.DeletedAt,
@@ -125,7 +130,7 @@ func toCourseModel(e *entity.Course) *courseModel {
 	if e.ID != "" {
 		oid, err := bson.ObjectIDFromHex(e.ID)
 		if err == nil {
-			m.ID = oid
+			m.ID = &oid
 		}
 	}
 	return m
