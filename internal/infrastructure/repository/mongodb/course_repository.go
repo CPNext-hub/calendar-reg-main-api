@@ -97,6 +97,14 @@ func (r *courseRepository) GetByCode(ctx context.Context, code string) (*entity.
 }
 
 func (r *courseRepository) Delete(ctx context.Context, code string) error {
-	_, err := r.db.Collection(courseCollection).DeleteOne(ctx, bson.M{"code": code})
-	return err
+	result, err := r.db.Collection(courseCollection).DeleteOne(ctx, bson.M{"code": code})
+	if err != nil {
+		return err
+	}
+
+	if result.DeletedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+
+	return nil
 }
