@@ -14,6 +14,13 @@ type Config struct {
 	MongoDBName   string
 	MongoUser     string
 	MongoPassword string
+
+	// JWT
+	JWTSecret string
+
+	// Superadmin seed
+	SuperAdminUser string
+	SuperAdminPass string
 }
 
 // Load reads configuration from environment variables with sensible defaults.
@@ -28,6 +35,11 @@ func Load() *Config {
 		MongoDBName:   getEnv("MONGO_DB_NAME", "calendar-reg"),
 		MongoUser:     getEnv("MONGO_INITDB_ROOT_USERNAME", ""),
 		MongoPassword: getEnv("MONGO_INITDB_ROOT_PASSWORD", ""),
+
+		JWTSecret: getEnv("JWT_SECRET", "change-me"),
+
+		SuperAdminUser: getEnv("SUPER_ADMIN_USER", "superadmin"),
+		SuperAdminPass: getEnv("SUPER_ADMIN_PASS", "superadmin123"),
 	}
 }
 

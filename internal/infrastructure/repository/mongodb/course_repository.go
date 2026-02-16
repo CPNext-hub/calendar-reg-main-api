@@ -15,7 +15,7 @@ const courseCollection = "courses"
 
 // courseModel is the MongoDB-specific representation of a course (bson tags live here).
 type courseModel struct {
-	baseModel    `bson:",inline"`
+	BaseModel    `bson:",inline"`
 	Code         string         `bson:"code"`
 	NameEN       string         `bson:"name_en"`
 	NameTH       string         `bson:"name_th"`
@@ -33,14 +33,16 @@ type sectionModel struct {
 	Schedules  []scheduleModel `bson:"schedules"`
 	Seats      int             `bson:"seats"`
 	Instructor string          `bson:"instructor"`
-	ExamDate   string          `bson:"exam_date,omitempty"`
+	ExamStart  time.Time       `bson:"exam_start,omitempty"`
+	ExamEnd    time.Time       `bson:"exam_end,omitempty"`
 }
 
 type scheduleModel struct {
-	Day  string `bson:"day"`
-	Time string `bson:"time"`
-	Room string `bson:"room"`
-	Type string `bson:"type"`
+	Day       string    `bson:"day"`
+	StartTime time.Time `bson:"start_time"`
+	EndTime   time.Time `bson:"end_time"`
+	Room      string    `bson:"room"`
+	Type      string    `bson:"type"`
 }
 
 // toEntity converts a MongoDB model to a domain entity.
@@ -50,10 +52,11 @@ func (m *courseModel) toEntity() *entity.Course {
 		schedules := make([]entity.Schedule, len(s.Schedules))
 		for j, sc := range s.Schedules {
 			schedules[j] = entity.Schedule{
-				Day:  sc.Day,
-				Time: sc.Time,
-				Room: sc.Room,
-				Type: sc.Type,
+				Day:       sc.Day,
+				StartTime: sc.StartTime,
+				EndTime:   sc.EndTime,
+				Room:      sc.Room,
+				Type:      sc.Type,
 			}
 		}
 		sections[i] = entity.Section{
@@ -61,7 +64,8 @@ func (m *courseModel) toEntity() *entity.Course {
 			Schedules:  schedules,
 			Seats:      s.Seats,
 			Instructor: s.Instructor,
-			ExamDate:   s.ExamDate,
+			ExamStart:  s.ExamStart,
+			ExamEnd:    s.ExamEnd,
 		}
 	}
 
@@ -97,10 +101,11 @@ func toCourseModel(e *entity.Course) *courseModel {
 		schedules := make([]scheduleModel, len(s.Schedules))
 		for j, sc := range s.Schedules {
 			schedules[j] = scheduleModel{
-				Day:  sc.Day,
-				Time: sc.Time,
-				Room: sc.Room,
-				Type: sc.Type,
+				Day:       sc.Day,
+				StartTime: sc.StartTime,
+				EndTime:   sc.EndTime,
+				Room:      sc.Room,
+				Type:      sc.Type,
 			}
 		}
 		sections[i] = sectionModel{
@@ -108,7 +113,8 @@ func toCourseModel(e *entity.Course) *courseModel {
 			Schedules:  schedules,
 			Seats:      s.Seats,
 			Instructor: s.Instructor,
-			ExamDate:   s.ExamDate,
+			ExamStart:  s.ExamStart,
+			ExamEnd:    s.ExamEnd,
 		}
 	}
 

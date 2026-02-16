@@ -44,16 +44,23 @@ func Start(cfg *config.Config) {
 	courseRepo := mongoRepo.NewCourseRepository(mongo.Database())
 	courseUC := usecase.NewCourseUsecase(courseRepo)
 
+	userRepo := mongoRepo.NewUserRepository(mongo.Database())
+	authUC := usecase.NewAuthUsecase(userRepo, cfg.JWTSecret)
+
+	// ---------- Seed superadmin ----------
+	authUC.SeedSuperAdmin(ctx, cfg.SuperAdminUser, cfg.SuperAdminPass)
+
 	// handlers
 	h := &router.Handlers{
 		Health:    handler.NewHealthHandler(healthUC),
 		Version:   handler.NewVersionHandler(versionUC),
 		MongoTest: handler.NewMongoTestHandler(mongo),
 		Course:    handler.NewCourseHandler(courseUC),
+		Auth:      handler.NewAuthHandler(authUC),
 	}
 
 	// routes
-	router.SetupRoutes(app, h)
+	router.SetupRoutes(app, h, cfg.JWTSecret)
 
 	// ---------- Graceful Shutdown ----------
 	quit := make(chan os.Signal, 1)

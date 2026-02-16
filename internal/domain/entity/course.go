@@ -1,5 +1,9 @@
 package entity
 
+import (
+	"time"
+)
+
 // Course represents a university course.
 type Course struct {
 	BaseEntity
@@ -21,13 +25,15 @@ type Section struct {
 	Schedules  []Schedule // multiple schedule slots per section
 	Seats      int        // e.g., 40
 	Instructor string     // e.g., "ผศ.ดร.ชิตสุธา สุ่มเล็ก"
-	ExamDate   string     // e.g., "31 มี.ค. 2569 เวลา 13:00 - 16:00 ..."
+	ExamStart time.Time // e.g., 2026-03-31 13:00:00
+	ExamEnd   time.Time // e.g., 2026-03-31 16:00:00
 }
 
 // Schedule represents a single class meeting (day + time + room).
 type Schedule struct {
-	Day  string // e.g., "จันทร์"
-	Time string // e.g., "13:00-15:00"
-	Room string // e.g., "CP9 CP9127"
-	Type string // e.g., "C" (lecture)
+	Day       string    // e.g., "จันทร์"
+	StartTime time.Time // e.g., 13:00 parsed from "13:00-15:00"
+	EndTime   time.Time // e.g., 15:00 parsed from "13:00-15:00"
+	Room      string    // e.g., "CP9 CP9127"
+	Type      string    // e.g., "C" (lecture)
 }

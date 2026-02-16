@@ -18,6 +18,7 @@ tasks:
   dev:
     desc: Run with hot-reload (requires air)
     cmds:
+      - task: swagger
       - air
     preconditions:
       - sh: command -v air
@@ -105,12 +106,23 @@ tasks:
     cmds:
       - docker run --rm -p 8080:8080 --env-file .env {{.APP_NAME}}:latest
 
+  # ---------- Swagger ----------
+
+  swagger:
+    desc: Generate Swagger docs
+    cmds:
+      - $(go env GOPATH)/bin/swag init -g {{.MAIN}} -o ./docs
+    preconditions:
+      - sh: test -f $(go env GOPATH)/bin/swag
+        msg: "swag not found. Install: go install github.com/swaggo/swag/cmd/swag@latest"
+
   # ---------- Tools ----------
 
   tools:
     desc: Install development tools
     cmds:
       - go install github.com/air-verse/air@latest
+      - go install github.com/swaggo/swag/cmd/swag@latest
       - echo "Tools installed ✓"
 
   # ---------- Docker ----------
