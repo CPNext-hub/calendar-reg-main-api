@@ -24,6 +24,8 @@ definitions:
         type: array
       semester:
         type: integer
+      updated_at:
+        type: string
       year:
         type: integer
     type: object
@@ -170,6 +172,17 @@ definitions:
       version:
         type: string
     type: object
+  queue.QueueStatus:
+    properties:
+      codes:
+        items:
+          type: string
+        type: array
+      processed:
+        type: integer
+      processing:
+        type: integer
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -242,6 +255,40 @@ paths:
       tags:
       - auth
   /auth/users:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a paginated list of users. Requires superadmin or admin
+        JWT. Use limit=0 to fetch all.
+      parameters:
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (default 10, 0=all)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "401":
+          description: Unauthorized
+          schema: {}
+        "403":
+          description: Forbidden
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - BearerAuth: []
+      summary: Get users (paginated)
+      tags:
+      - auth
     post:
       consumes:
       - application/json
@@ -379,6 +426,19 @@ paths:
       summary: Get course by code
       tags:
       - courses
+  /queue/status:
+    get:
+      description: Returns pending, processed, dropped counts and capacity
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/queue.QueueStatus'
+      summary: Get queue status
+      tags:
+      - queue
   /status:
     get:
       consumes:

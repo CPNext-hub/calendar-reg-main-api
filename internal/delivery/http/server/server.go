@@ -13,10 +13,13 @@ import (
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/delivery/http/middleware"
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/delivery/http/router"
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/usecase"
+	"github.com/CPNext-hub/calendar-reg-main-api/internal/infrastructure/externalapi"
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/infrastructure/mongodb"
 	mongoRepo "github.com/CPNext-hub/calendar-reg-main-api/internal/infrastructure/repository/mongodb"
 	"github.com/CPNext-hub/calendar-reg-main-api/pkg/queue"
 	"github.com/gofiber/fiber/v2"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // Start initialises dependencies and starts the HTTP server.
@@ -28,6 +31,15 @@ func Start(cfg *config.Config) {
 	if err != nil {
 		log.Fatalf("Failed to connect to MongoDB: %v", err)
 	}
+
+	// ---------- gRPC connection to external course API ----------
+	grpcConn, err := grpc.NewClient(cfg.CourseGRPCAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Fatalf("Failed to connect to course gRPC service at %s: %v", cfg.CourseGRPCAddr, err)
+	}
+	log.Printf("gRPC client connected to %s", cfg.CourseGRPCAddr)
 
 	// ---------- Fiber ----------
 	app := fiber.New(fiber.Config{
@@ -44,9 +56,10 @@ func Start(cfg *config.Config) {
 	healthUC := usecase.NewHealthUsecase()
 	versionUC := usecase.NewVersionUsecase(cfg.AppName, cfg.AppVersion, cfg.AppEnv)
 
-	// repositories
+	// repositories & external APIs
 	courseRepo := mongoRepo.NewCourseRepository(mongo.Database())
-	courseUC := usecase.NewCourseUsecase(courseRepo, cfg.CourseAPIURL, refreshQueue)
+	courseExtAPI := externalapi.NewCourseExternalAPI(grpcConn)
+	courseUC := usecase.NewCourseUsecase(courseRepo, courseExtAPI, refreshQueue)
 
 	userRepo := mongoRepo.NewUserRepository(mongo.Database())
 	authUC := usecase.NewAuthUsecase(userRepo, cfg.JWTSecret)
@@ -92,6 +105,11 @@ func Start(cfg *config.Config) {
 	// shutdown Fiber
 	if err := app.Shutdown(); err != nil {
 		log.Printf("Fiber shutdown error: %v", err)
+	}
+
+	// close gRPC connection
+	if err := grpcConn.Close(); err != nil {
+		log.Printf("gRPC connection close error: %v", err)
 	}
 
 	// disconnect MongoDB

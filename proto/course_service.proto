@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package coursepb;
+
+option go_package = "github.com/CPNext-hub/calendar-reg-main-api/proto/gen/coursepb";
+
+service CourseService {
+  // FetchByCode returns course data for the given course code.
+  rpc FetchByCode(FetchByCodeRequest) returns (FetchByCodeResponse);
+}
+
+message FetchByCodeRequest {
+  string code = 1;
+}
+
+message FetchByCodeResponse {
+  string code = 1;
+  string name_en = 2;
+  string name_th = 3;
+  string faculty = 4;
+  string credits = 5;
+  string prerequisite = 6;
+  int32 semester = 7;
+  int32 year = 8;
+  string program = 9;
+  repeated Section sections = 10;
+}
+
+message Section {
+  string number = 1;
+  repeated Schedule schedules = 2;
+  int32 seats = 3;
+  string instructor = 4;
+  string exam_date = 5; // Thai format: "31 มี.ค. 2569 เวลา 13:00 - 16:00"
+}
+
+message Schedule {
+  string day = 1;
+  string time = 2; // "13:00-15:00"
+  string room = 3;
+  string type = 4;
+}

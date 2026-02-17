@@ -26,8 +26,8 @@ type Config struct {
 	SuperAdminUser string
 	SuperAdminPass string
 
-	// External API
-	CourseAPIURL string
+	// External Course gRPC
+	CourseGRPCAddr string
 }
 
 // requiredEnvVars lists every environment variable that must be set in production.
@@ -66,7 +66,7 @@ func Load() (*Config, error) {
 		SuperAdminUser: getEnv("SUPER_ADMIN_USER", "superadmin"),
 		SuperAdminPass: getEnv("SUPER_ADMIN_PASS", "superadmin123"),
 
-		CourseAPIURL: getEnv("COURSE_API_URL", "http://localhost:8888"),
+		CourseGRPCAddr: getEnv("COURSE_GRPC_ADDR", "localhost:50051"),
 	}, nil
 }
 
