@@ -15,6 +15,7 @@ import (
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/usecase"
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/infrastructure/mongodb"
 	mongoRepo "github.com/CPNext-hub/calendar-reg-main-api/internal/infrastructure/repository/mongodb"
+	"github.com/CPNext-hub/calendar-reg-main-api/pkg/queue"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -36,16 +37,22 @@ func Start(cfg *config.Config) {
 	// middlewares
 	middleware.SetupMiddlewares(app)
 
+	// ---------- Background Queue ----------
+	refreshQueue := queue.New(100)
+
 	// usecases
 	healthUC := usecase.NewHealthUsecase()
 	versionUC := usecase.NewVersionUsecase(cfg.AppName, cfg.AppVersion, cfg.AppEnv)
 
 	// repositories
 	courseRepo := mongoRepo.NewCourseRepository(mongo.Database())
-	courseUC := usecase.NewCourseUsecase(courseRepo)
+	courseUC := usecase.NewCourseUsecase(courseRepo, cfg.CourseAPIURL, refreshQueue)
 
 	userRepo := mongoRepo.NewUserRepository(mongo.Database())
 	authUC := usecase.NewAuthUsecase(userRepo, cfg.JWTSecret)
+
+	// Start background refresh worker
+	refreshQueue.Start(courseUC.ProcessRefreshJob)
 
 	// ---------- Seed superadmin ----------
 	authUC.SeedSuperAdmin(ctx, cfg.SuperAdminUser, cfg.SuperAdminPass)
@@ -57,6 +64,7 @@ func Start(cfg *config.Config) {
 		MongoTest: handler.NewMongoTestHandler(mongo),
 		Course:    handler.NewCourseHandler(courseUC),
 		Auth:      handler.NewAuthHandler(authUC),
+		Queue:     handler.NewQueueHandler(refreshQueue),
 	}
 
 	// routes
@@ -78,6 +86,9 @@ func Start(cfg *config.Config) {
 	sig := <-quit
 	log.Printf("Received signal %s, shutting down...", sig)
 
+	// stop background worker (drain remaining jobs)
+	refreshQueue.Stop()
+
 	// shutdown Fiber
 	if err := app.Shutdown(); err != nil {
 		log.Printf("Fiber shutdown error: %v", err)
@@ -89,7 +100,4 @@ func Start(cfg *config.Config) {
 	}
 
 	log.Println("Server stopped gracefully")
-
-	// mongo variable is available here for future use with repositories:
-	// _ = mongo.Database()
 }

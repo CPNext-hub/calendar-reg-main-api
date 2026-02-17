@@ -16,6 +16,7 @@ type Handlers struct {
 	MongoTest *handler.MongoTestHandler
 	Course    *handler.CourseHandler
 	Auth      *handler.AuthHandler
+	Queue     *handler.QueueHandler
 }
 
 // SetupRoutes registers all routes on the Fiber app.
@@ -42,6 +43,9 @@ func SetupRoutes(app *fiber.App, h *Handlers, jwtSecret string) {
 	adminCourses := courses.Group("", middleware.JWTAuth(jwtSecret), middleware.RequireRole(constants.RoleSuperAdmin, constants.RoleAdmin))
 	adminCourses.Post("/", h.Course.CreateCourse)
 	adminCourses.Delete("/:code", h.Course.DeleteCourse)
+
+	// ---------- Queue status ----------
+	api.Get("/queue/status", h.Queue.GetStatus)
 
 	// Swagger
 	app.Get("/swagger/*", fiberSwagger.WrapHandler)

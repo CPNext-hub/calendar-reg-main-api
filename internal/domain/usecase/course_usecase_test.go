@@ -17,6 +17,7 @@ type mockCourseRepo struct {
 	getByErr   error
 	getAllErr  error
 	pagErr     error
+	updateErr  error
 	deleteErr  error
 	allCourses []*entity.Course
 }
@@ -66,11 +67,19 @@ func (m *mockCourseRepo) SoftDelete(_ context.Context, code string) error {
 	return nil
 }
 
+func (m *mockCourseRepo) Update(_ context.Context, c *entity.Course) error {
+	if m.updateErr != nil {
+		return m.updateErr
+	}
+	m.courses[c.Code] = c
+	return nil
+}
+
 // ----- CreateCourse tests -----
 
 func TestCreateCourse_Success(t *testing.T) {
 	repo := newMockCourseRepo()
-	uc := NewCourseUsecase(repo)
+	uc := NewCourseUsecase(repo, "", nil)
 
 	course := &entity.Course{Code: "CS101"}
 	err := uc.CreateCourse(context.Background(), course)
@@ -85,7 +94,7 @@ func TestCreateCourse_Success(t *testing.T) {
 func TestCreateCourse_AlreadyExists(t *testing.T) {
 	repo := newMockCourseRepo()
 	repo.courses["CS101"] = &entity.Course{Code: "CS101"}
-	uc := NewCourseUsecase(repo)
+	uc := NewCourseUsecase(repo, "", nil)
 
 	err := uc.CreateCourse(context.Background(), &entity.Course{Code: "CS101"})
 	if err == nil {
@@ -99,7 +108,7 @@ func TestCreateCourse_AlreadyExists(t *testing.T) {
 func TestCreateCourse_RepoGetByCodeError(t *testing.T) {
 	repo := newMockCourseRepo()
 	repo.getByErr = errors.New("db error")
-	uc := NewCourseUsecase(repo)
+	uc := NewCourseUsecase(repo, "", nil)
 
 	err := uc.CreateCourse(context.Background(), &entity.Course{Code: "CS101"})
 	if err == nil || err.Error() != "db error" {
@@ -110,7 +119,7 @@ func TestCreateCourse_RepoGetByCodeError(t *testing.T) {
 func TestCreateCourse_RepoCreateError(t *testing.T) {
 	repo := newMockCourseRepo()
 	repo.createErr = errors.New("insert failed")
-	uc := NewCourseUsecase(repo)
+	uc := NewCourseUsecase(repo, "", nil)
 
 	err := uc.CreateCourse(context.Background(), &entity.Course{Code: "CS101"})
 	if err == nil || err.Error() != "insert failed" {
@@ -123,7 +132,7 @@ func TestCreateCourse_RepoCreateError(t *testing.T) {
 func TestGetAllCourses_Success(t *testing.T) {
 	repo := newMockCourseRepo()
 	repo.allCourses = []*entity.Course{{Code: "CS101"}, {Code: "CS102"}}
-	uc := NewCourseUsecase(repo)
+	uc := NewCourseUsecase(repo, "", nil)
 
 	courses, err := uc.GetAllCourses(context.Background())
 	if err != nil {
@@ -137,7 +146,7 @@ func TestGetAllCourses_Success(t *testing.T) {
 func TestGetAllCourses_Error(t *testing.T) {
 	repo := newMockCourseRepo()
 	repo.getAllErr = errors.New("find failed")
-	uc := NewCourseUsecase(repo)
+	uc := NewCourseUsecase(repo, "", nil)
 
 	_, err := uc.GetAllCourses(context.Background())
 	if err == nil {
@@ -150,7 +159,7 @@ func TestGetAllCourses_Error(t *testing.T) {
 func TestGetCoursesPaginated_Success(t *testing.T) {
 	repo := newMockCourseRepo()
 	repo.allCourses = []*entity.Course{{Code: "CS101"}, {Code: "CS102"}, {Code: "CS103"}}
-	uc := NewCourseUsecase(repo)
+	uc := NewCourseUsecase(repo, "", nil)
 
 	pq := pagination.PaginationQuery{Page: 1, Limit: 10}
 	result, err := uc.GetCoursesPaginated(context.Background(), pq)
@@ -171,7 +180,7 @@ func TestGetCoursesPaginated_Success(t *testing.T) {
 func TestGetCoursesPaginated_LimitZero(t *testing.T) {
 	repo := newMockCourseRepo()
 	repo.allCourses = []*entity.Course{{Code: "CS101"}}
-	uc := NewCourseUsecase(repo)
+	uc := NewCourseUsecase(repo, "", nil)
 
 	pq := pagination.PaginationQuery{Page: 1, Limit: 0}
 	result, err := uc.GetCoursesPaginated(context.Background(), pq)
@@ -186,7 +195,7 @@ func TestGetCoursesPaginated_LimitZero(t *testing.T) {
 func TestGetCoursesPaginated_Error(t *testing.T) {
 	repo := newMockCourseRepo()
 	repo.pagErr = errors.New("paginate failed")
-	uc := NewCourseUsecase(repo)
+	uc := NewCourseUsecase(repo, "", nil)
 
 	pq := pagination.PaginationQuery{Page: 1, Limit: 10}
 	_, err := uc.GetCoursesPaginated(context.Background(), pq)
@@ -200,7 +209,7 @@ func TestGetCoursesPaginated_Error(t *testing.T) {
 func TestGetCourseByCode_Found(t *testing.T) {
 	repo := newMockCourseRepo()
 	repo.courses["CS101"] = &entity.Course{Code: "CS101", NameEN: "Intro CS"}
-	uc := NewCourseUsecase(repo)
+	uc := NewCourseUsecase(repo, "", nil)
 
 	course, err := uc.GetCourseByCode(context.Background(), "CS101")
 	if err != nil {
@@ -213,7 +222,7 @@ func TestGetCourseByCode_Found(t *testing.T) {
 
 func TestGetCourseByCode_NotFound(t *testing.T) {
 	repo := newMockCourseRepo()
-	uc := NewCourseUsecase(repo)
+	uc := NewCourseUsecase(repo, "", nil)
 
 	course, err := uc.GetCourseByCode(context.Background(), "NOPE")
 	if err != nil {
@@ -227,7 +236,7 @@ func TestGetCourseByCode_NotFound(t *testing.T) {
 func TestGetCourseByCode_Error(t *testing.T) {
 	repo := newMockCourseRepo()
 	repo.getByErr = errors.New("db error")
-	uc := NewCourseUsecase(repo)
+	uc := NewCourseUsecase(repo, "", nil)
 
 	_, err := uc.GetCourseByCode(context.Background(), "CS101")
 	if err == nil {
@@ -240,7 +249,7 @@ func TestGetCourseByCode_Error(t *testing.T) {
 func TestDeleteCourse_Success(t *testing.T) {
 	repo := newMockCourseRepo()
 	repo.courses["CS101"] = &entity.Course{Code: "CS101"}
-	uc := NewCourseUsecase(repo)
+	uc := NewCourseUsecase(repo, "", nil)
 
 	err := uc.DeleteCourse(context.Background(), "CS101")
 	if err != nil {
@@ -253,7 +262,7 @@ func TestDeleteCourse_Success(t *testing.T) {
 
 func TestDeleteCourse_NotFound(t *testing.T) {
 	repo := newMockCourseRepo()
-	uc := NewCourseUsecase(repo)
+	uc := NewCourseUsecase(repo, "", nil)
 
 	err := uc.DeleteCourse(context.Background(), "NOPE")
 	if err == nil {
@@ -268,7 +277,7 @@ func TestDeleteCourse_RepoError(t *testing.T) {
 	repo := newMockCourseRepo()
 	repo.courses["CS101"] = &entity.Course{Code: "CS101"}
 	repo.deleteErr = errors.New("delete failed")
-	uc := NewCourseUsecase(repo)
+	uc := NewCourseUsecase(repo, "", nil)
 
 	err := uc.DeleteCourse(context.Background(), "CS101")
 	if err == nil || err.Error() != "delete failed" {

@@ -240,6 +240,36 @@ func (r *courseRepository) GetByCode(ctx context.Context, code string) (*entity.
 	return model.toEntity(), nil
 }
 
+func (r *courseRepository) Update(ctx context.Context, course *entity.Course) error {
+	course.UpdatedAt = time.Now()
+	model := toCourseModel(course)
+
+	filter := bson.M{"code": course.Code, "deleted_at": bson.M{"$exists": false}}
+	update := bson.M{
+		"$set": bson.M{
+			"name_en":      model.NameEN,
+			"name_th":      model.NameTH,
+			"faculty":      model.Faculty,
+			"credits":      model.Credits,
+			"prerequisite": model.Prerequisite,
+			"semester":     model.Semester,
+			"year":         model.Year,
+			"program":      model.Program,
+			"sections":     model.Sections,
+			"updated_at":   model.UpdatedAt,
+		},
+	}
+
+	result, err := r.db.Collection(courseCollection).UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount == 0 {
+		return errors.New("course not found")
+	}
+	return nil
+}
+
 func (r *courseRepository) SoftDelete(ctx context.Context, code string) error {
 	now := time.Now()
 	filter := bson.M{"code": code, "deleted_at": bson.M{"$exists": false}}

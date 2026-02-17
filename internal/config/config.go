@@ -25,6 +25,9 @@ type Config struct {
 	// Superadmin seed
 	SuperAdminUser string
 	SuperAdminPass string
+
+	// External API
+	CourseAPIURL string
 }
 
 // requiredEnvVars lists every environment variable that must be set in production.
@@ -62,6 +65,8 @@ func Load() (*Config, error) {
 
 		SuperAdminUser: getEnv("SUPER_ADMIN_USER", "superadmin"),
 		SuperAdminPass: getEnv("SUPER_ADMIN_PASS", "superadmin123"),
+
+		CourseAPIURL: getEnv("COURSE_API_URL", "http://localhost:8888"),
 	}, nil
 }
 

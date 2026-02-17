@@ -66,8 +66,14 @@ func TestToCourseResponse(t *testing.T) {
 	examStart := time.Date(2026, time.March, 31, 13, 0, 0, 0, time.Local)
 	examEnd := time.Date(2026, time.March, 31, 16, 0, 0, 0, time.Local)
 
+	// Mock UpdatedAt
+	updatedAt := time.Date(2026, time.February, 17, 14, 0, 0, 0, time.Local)
+
 	entityCourse := &entity.Course{
 		Code: "CP353004",
+		BaseEntity: entity.BaseEntity{
+			UpdatedAt: updatedAt,
+		},
 		Sections: []entity.Section{
 			{
 				Number: "01",
@@ -90,6 +96,7 @@ func TestToCourseResponse(t *testing.T) {
 
 	assert.NotNil(t, response)
 	assert.Equal(t, 1, len(response.Sections))
+	assert.Equal(t, updatedAt.Format(time.RFC3339), response.UpdatedAt)
 
 	secResp := response.Sections[0]
 	assert.Equal(t, "2026-03-31 13:00:00", secResp.ExamStart)

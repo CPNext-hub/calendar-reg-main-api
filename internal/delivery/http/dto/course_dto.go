@@ -123,6 +123,7 @@ type CourseResponse struct {
 	Semester     int               `json:"semester"`
 	Year         int               `json:"year"`
 	Program      string            `json:"program"`
+	UpdatedAt    string            `json:"updated_at"`
 	Sections     []SectionResponse `json:"sections"`
 }
 
@@ -194,6 +195,7 @@ func ToCourseResponse(c *entity.Course) *CourseResponse {
 		Year:         c.Year,
 		Program:      c.Program,
 		Sections:     sections,
+		UpdatedAt:    c.UpdatedAt.Format(time.RFC3339),
 	}
 }
 
