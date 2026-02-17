@@ -50,7 +50,7 @@ func Start(cfg *config.Config) {
 	middleware.SetupMiddlewares(app)
 
 	// ---------- Background Queue ----------
-	refreshQueue := queue.New(100)
+	refreshQueue := queue.New(100, 5)
 
 	// usecases
 	healthUC := usecase.NewHealthUsecase()

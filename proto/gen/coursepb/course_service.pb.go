@@ -77,6 +77,7 @@ type FetchByCodeResponse struct {
 	Year          int32                  `protobuf:"varint,8,opt,name=year,proto3" json:"year,omitempty"`
 	Program       string                 `protobuf:"bytes,9,opt,name=program,proto3" json:"program,omitempty"`
 	Sections      []*Section             `protobuf:"bytes,10,rep,name=sections,proto3" json:"sections,omitempty"`
+	Campus        string                 `protobuf:"bytes,11,opt,name=campus,proto3" json:"campus,omitempty"` // e.g. "ขอนแก่น", "หนองคาย"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -181,13 +182,23 @@ func (x *FetchByCodeResponse) GetSections() []*Section {
 	return nil
 }
 
+func (x *FetchByCodeResponse) GetCampus() string {
+	if x != nil {
+		return x.Campus
+	}
+	return ""
+}
+
 type Section struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Number        string                 `protobuf:"bytes,1,opt,name=number,proto3" json:"number,omitempty"`
 	Schedules     []*Schedule            `protobuf:"bytes,2,rep,name=schedules,proto3" json:"schedules,omitempty"`
 	Seats         int32                  `protobuf:"varint,3,opt,name=seats,proto3" json:"seats,omitempty"`
 	Instructor    string                 `protobuf:"bytes,4,opt,name=instructor,proto3" json:"instructor,omitempty"`
-	ExamDate      string                 `protobuf:"bytes,5,opt,name=exam_date,json=examDate,proto3" json:"exam_date,omitempty"` // Thai format: "31 มี.ค. 2569 เวลา 13:00 - 16:00"
+	ExamDate      string                 `protobuf:"bytes,5,opt,name=exam_date,json=examDate,proto3" json:"exam_date,omitempty"`          // Thai format: "31 มี.ค. 2569 เวลา 13:00 - 16:00"
+	MidtermDate   string                 `protobuf:"bytes,6,opt,name=midterm_date,json=midtermDate,proto3" json:"midterm_date,omitempty"` // สอบกลางภาค
+	Note          string                 `protobuf:"bytes,7,opt,name=note,proto3" json:"note,omitempty"`                                  // หมายเหตุ e.g. "ผู้สอบไม่ผ่าน", "Closed"
+	ReservedFor   string                 `protobuf:"bytes,8,opt,name=reserved_for,json=reservedFor,proto3" json:"reserved_for,omitempty"` // สำรองสำหรับ e.g. "ผู้ที่สอบไม่ผ่าน50-49-1"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -253,6 +264,27 @@ func (x *Section) GetInstructor() string {
 func (x *Section) GetExamDate() string {
 	if x != nil {
 		return x.ExamDate
+	}
+	return ""
+}
+
+func (x *Section) GetMidtermDate() string {
+	if x != nil {
+		return x.MidtermDate
+	}
+	return ""
+}
+
+func (x *Section) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
+
+func (x *Section) GetReservedFor() string {
+	if x != nil {
+		return x.ReservedFor
 	}
 	return ""
 }
@@ -331,7 +363,7 @@ const file_course_service_proto_rawDesc = "" +
 	"\n" +
 	"\x14course_service.proto\x12\bcoursepb\"(\n" +
 	"\x12FetchByCodeRequest\x12\x12\n" +
-	"\x04code\x18\x01 \x01(\tR\x04code\"\xac\x02\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\"\xc4\x02\n" +
 	"\x13FetchByCodeResponse\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x17\n" +
 	"\aname_en\x18\x02 \x01(\tR\x06nameEn\x12\x17\n" +
@@ -343,7 +375,8 @@ const file_course_service_proto_rawDesc = "" +
 	"\x04year\x18\b \x01(\x05R\x04year\x12\x18\n" +
 	"\aprogram\x18\t \x01(\tR\aprogram\x12-\n" +
 	"\bsections\x18\n" +
-	" \x03(\v2\x11.coursepb.SectionR\bsections\"\xa6\x01\n" +
+	" \x03(\v2\x11.coursepb.SectionR\bsections\x12\x16\n" +
+	"\x06campus\x18\v \x01(\tR\x06campus\"\x80\x02\n" +
 	"\aSection\x12\x16\n" +
 	"\x06number\x18\x01 \x01(\tR\x06number\x120\n" +
 	"\tschedules\x18\x02 \x03(\v2\x12.coursepb.ScheduleR\tschedules\x12\x14\n" +
@@ -351,7 +384,10 @@ const file_course_service_proto_rawDesc = "" +
 	"\n" +
 	"instructor\x18\x04 \x01(\tR\n" +
 	"instructor\x12\x1b\n" +
-	"\texam_date\x18\x05 \x01(\tR\bexamDate\"X\n" +
+	"\texam_date\x18\x05 \x01(\tR\bexamDate\x12!\n" +
+	"\fmidterm_date\x18\x06 \x01(\tR\vmidtermDate\x12\x12\n" +
+	"\x04note\x18\a \x01(\tR\x04note\x12!\n" +
+	"\freserved_for\x18\b \x01(\tR\vreservedFor\"X\n" +
 	"\bSchedule\x12\x10\n" +
 	"\x03day\x18\x01 \x01(\tR\x03day\x12\x12\n" +
 	"\x04time\x18\x02 \x01(\tR\x04time\x12\x12\n" +

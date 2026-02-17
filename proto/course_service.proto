@@ -24,6 +24,7 @@ message FetchByCodeResponse {
   int32 year = 8;
   string program = 9;
   repeated Section sections = 10;
+  string campus = 11; // e.g. "ขอนแก่น", "หนองคาย"
 }
 
 message Section {
@@ -32,6 +33,9 @@ message Section {
   int32 seats = 3;
   string instructor = 4;
   string exam_date = 5; // Thai format: "31 มี.ค. 2569 เวลา 13:00 - 16:00"
+  string midterm_date = 6; // สอบกลางภาค
+  string note = 7; // หมายเหตุ e.g. "ผู้สอบไม่ผ่าน", "Closed"
+  string reserved_for = 8; // สำรองสำหรับ e.g. "ผู้ที่สอบไม่ผ่าน50-49-1"
 }
 
 message Schedule {

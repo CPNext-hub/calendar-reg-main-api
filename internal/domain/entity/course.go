@@ -16,17 +16,22 @@ type Course struct {
 	Semester     int       // e.g., 2
 	Year         int       // e.g., 2568
 	Program      string    // e.g., "ปริญญาตรี ภาคปกติ"
+	Campus       string    // e.g., "ขอนแก่น", "หนองคาย"
 	Sections     []Section // multiple sections per course
 }
 
 // Section represents a course section with schedule and instructor info.
 type Section struct {
-	Number     string     // e.g., "01"
-	Schedules  []Schedule // multiple schedule slots per section
-	Seats      int        // e.g., 40
-	Instructor string     // e.g., "ผศ.ดร.ชิตสุธา สุ่มเล็ก"
-	ExamStart time.Time // e.g., 2026-03-31 13:00:00
-	ExamEnd   time.Time // e.g., 2026-03-31 16:00:00
+	Number       string     // e.g., "01"
+	Schedules    []Schedule // multiple schedule slots per section
+	Seats        int        // e.g., 40
+	Instructor   string     // e.g., "ผศ.ดร.ชิตสุธา สุ่มเล็ก"
+	ExamStart    time.Time  // e.g., 2026-03-31 13:00:00
+	ExamEnd      time.Time  // e.g., 2026-03-31 16:00:00
+	MidtermStart time.Time  // สอบกลางภาค start
+	MidtermEnd   time.Time  // สอบกลางภาค end
+	Note         string     // หมายเหตุ e.g., "ผู้สอบไม่ผ่าน", "Closed"
+	ReservedFor  string     // สำรองสำหรับ e.g., "ผู้ที่สอบไม่ผ่าน50-49-1"
 }
 
 // Schedule represents a single class meeting (day + time + room).

@@ -57,151 +57,99 @@ func (u *courseUsecase) GetCoursesPaginated(ctx context.Context, pq pagination.P
 	return &result, nil
 }
 
-// refreshResult holds the result from a background refresh goroutine.
-type refreshResult struct {
-	course *entity.Course
-	err    error
-}
-
 func (u *courseUsecase) GetCourseByCode(ctx context.Context, code string) (*entity.Course, error) {
 	course, err := u.repo.GetByCode(ctx, code)
 	if err != nil {
 		return nil, err
 	}
+
 	if course == nil {
-		// Not in DB — try to fetch from external API (same pattern as stale refresh).
-		if u.externalAPI == nil {
-			return nil, nil
-		}
-		if u.refreshQueue != nil && !u.refreshQueue.Enqueue(queue.RefreshJob{Code: code}) {
+		// Not in DB — enqueue a first-fetch job and wait up to 3 seconds.
+		if u.externalAPI == nil || u.refreshQueue == nil {
 			return nil, nil
 		}
 
-		ch := make(chan refreshResult, 1)
-		go func() {
-			fetchCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-			defer cancel()
-
-			fetched, err := u.externalAPI.FetchByCode(fetchCtx, code)
-			if err == nil {
-				fetched.CreatedAt = time.Now()
-			}
-			ch <- refreshResult{course: fetched, err: err}
-		}()
+		resultCh := make(chan queue.JobResult, 1)
+		if !u.refreshQueue.Enqueue(queue.RefreshJob{Code: code, IsNew: true, Result: resultCh}) {
+			return nil, nil
+		}
 
 		select {
-		case res := <-ch:
-			if u.refreshQueue != nil {
-				u.refreshQueue.MarkDone(code)
-			}
-			if res.err != nil {
-				log.Printf("external fetch failed for %s: %v", code, res.err)
+		case res := <-resultCh:
+			if res.Err != nil {
+				log.Printf("external fetch failed for %s: %v", code, res.Err)
 				return nil, nil
 			}
-			if err := u.repo.Create(context.Background(), res.course); err != nil {
-				log.Printf("failed to save fetched course %s: %v", code, err)
-				return nil, err
+			if c, ok := res.Data.(*entity.Course); ok {
+				return c, nil
 			}
-			log.Printf("course %s fetched from external API and saved", code)
-			return res.course, nil
+			return nil, nil
 
 		case <-time.After(3 * time.Second):
 			log.Printf("external fetch for %s taking too long, returning nil", code)
-
-			go func() {
-				if u.refreshQueue != nil {
-					defer u.refreshQueue.MarkDone(code)
-				}
-				res := <-ch
-				if res.err != nil {
-					log.Printf("[background] external fetch failed for %s: %v", code, res.err)
-					return
-				}
-				res.course.CreatedAt = time.Now()
-				bgCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-				defer cancel()
-				if err := u.repo.Create(bgCtx, res.course); err != nil {
-					log.Printf("[background] failed to save fetched course %s: %v", code, err)
-				} else {
-					log.Printf("[background] fetch completed for %s", code)
-				}
-			}()
 			return nil, nil
 		}
 	}
 
-	// Check if last updated today — if not, try to refresh.
+	// Check if last updated today — if not, enqueue a background refresh.
 	if !isToday(course.UpdatedAt) {
-		// Acquire refresh lock — skip if already in progress for this code.
-		if u.externalAPI == nil {
-			return course, nil
-		}
-		if u.refreshQueue != nil && !u.refreshQueue.Enqueue(queue.RefreshJob{Code: code}) {
-			return course, nil
-		}
-
-		// Fire ONE request in a goroutine via the external API interface.
-		ch := make(chan refreshResult, 1)
-		go func() {
-			refreshCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-			defer cancel()
-
-			refreshed, err := u.externalAPI.FetchByCode(refreshCtx, code)
-			if err == nil {
-				// Preserve identity from the existing course.
-				refreshed.ID = course.ID
-				refreshed.Code = course.Code
-				refreshed.CreatedAt = course.CreatedAt
-			}
-			ch <- refreshResult{course: refreshed, err: err}
-		}()
-
-		// Wait up to 3 seconds for the response.
-		select {
-		case res := <-ch:
-			// Got result within 3 seconds — release the lock.
-			if u.refreshQueue != nil {
-				u.refreshQueue.MarkDone(code)
-			}
-			if res.err != nil {
-				log.Printf("course refresh failed for %s: %v", code, res.err)
-			} else {
-				if saveErr := u.repo.Update(context.Background(), res.course); saveErr != nil {
-					log.Printf("failed to save refreshed course %s: %v", code, saveErr)
-				}
-				course = res.course
-			}
-
-		case <-time.After(3 * time.Second):
-			// Timeout — return stale data, goroutine continues in background.
-			log.Printf("course refresh for %s taking too long, returning stale data", code)
-
-			go func() {
-				if u.refreshQueue != nil {
-					defer u.refreshQueue.MarkDone(code)
-				}
-				res := <-ch
-				if res.err != nil {
-					log.Printf("[background] refresh failed for %s: %v", code, res.err)
-					return
-				}
-				bgCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-				defer cancel()
-				if err := u.repo.Update(bgCtx, res.course); err != nil {
-					log.Printf("[background] failed to save refreshed course %s: %v", code, err)
-				} else {
-					log.Printf("[background] refresh completed for %s", code)
-				}
-			}()
+		if u.externalAPI != nil && u.refreshQueue != nil {
+			u.refreshQueue.Enqueue(queue.RefreshJob{Code: code, IsNew: false})
 		}
 	}
 
 	return course, nil
 }
 
-// ProcessRefreshJob is kept for interface compatibility.
+// ProcessRefreshJob is called by worker pool goroutines to fetch and save course data.
 func (u *courseUsecase) ProcessRefreshJob(job queue.RefreshJob) {
-	// no-op: goroutines handle the work directly
+	defer u.refreshQueue.MarkDone(job.Code)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	fetched, err := u.externalAPI.FetchByCode(ctx, job.Code)
+	if err != nil {
+		log.Printf("[worker] fetch failed for %s: %v", job.Code, err)
+		if job.Result != nil {
+			job.Result <- queue.JobResult{Err: err}
+		}
+		return
+	}
+
+	if job.IsNew {
+		// First fetch — create new record.
+		fetched.CreatedAt = time.Now()
+		if saveErr := u.repo.Create(context.Background(), fetched); saveErr != nil {
+			log.Printf("[worker] failed to save new course %s: %v", job.Code, saveErr)
+			if job.Result != nil {
+				job.Result <- queue.JobResult{Err: saveErr}
+			}
+			return
+		}
+		log.Printf("[worker] new course %s fetched and saved", job.Code)
+	} else {
+		// Stale refresh — update existing record, preserving identity.
+		existing, getErr := u.repo.GetByCode(ctx, job.Code)
+		if getErr != nil || existing == nil {
+			log.Printf("[worker] could not find existing course %s for refresh: %v", job.Code, getErr)
+			return
+		}
+		fetched.ID = existing.ID
+		fetched.Code = existing.Code
+		fetched.CreatedAt = existing.CreatedAt
+
+		if saveErr := u.repo.Update(context.Background(), fetched); saveErr != nil {
+			log.Printf("[worker] failed to update course %s: %v", job.Code, saveErr)
+			return
+		}
+		log.Printf("[worker] course %s refreshed and saved", job.Code)
+	}
+
+	// Send result back to caller if they're waiting.
+	if job.Result != nil {
+		job.Result <- queue.JobResult{Data: fetched}
+	}
 }
 
 // isToday checks whether t falls on the current calendar day (local time).

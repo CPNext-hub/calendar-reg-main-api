@@ -74,13 +74,28 @@ func protoToCourse(resp *pb.FetchByCodeResponse) *entity.Course {
 			}
 		}
 
+		var midtermStart, midtermEnd time.Time
+		if s.MidtermDate != "" {
+			ms, me, err := parseThaiExamDate(s.MidtermDate)
+			if err == nil {
+				midtermStart = ms
+				midtermEnd = me
+			} else {
+				log.Printf("Error parsing midterm date: %v", err)
+			}
+		}
+
 		sections[i] = entity.Section{
-			Number:     s.Number,
-			Schedules:  schedules,
-			Seats:      int(s.Seats),
-			Instructor: s.Instructor,
-			ExamStart:  examStart,
-			ExamEnd:    examEnd,
+			Number:       s.Number,
+			Schedules:    schedules,
+			Seats:        int(s.Seats),
+			Instructor:   s.Instructor,
+			ExamStart:    examStart,
+			ExamEnd:      examEnd,
+			MidtermStart: midtermStart,
+			MidtermEnd:   midtermEnd,
+			Note:         s.Note,
+			ReservedFor:  s.ReservedFor,
 		}
 	}
 
@@ -94,6 +109,7 @@ func protoToCourse(resp *pb.FetchByCodeResponse) *entity.Course {
 		Semester:     int(resp.Semester),
 		Year:         int(resp.Year),
 		Program:      resp.Program,
+		Campus:       resp.Campus,
 		Sections:     sections,
 	}
 }

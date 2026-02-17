@@ -23,16 +23,20 @@ type CreateCourseRequest struct {
 	Semester     int              `json:"semester"`
 	Year         int              `json:"year"`
 	Program      string           `json:"program"`
+	Campus       string           `json:"campus,omitempty"`
 	Sections     []SectionRequest `json:"sections"`
 }
 
 // SectionRequest represents a section in a create/update request.
 type SectionRequest struct {
-	Number     string            `json:"number"`
-	Schedules  []ScheduleRequest `json:"schedules"`
-	Seats      int               `json:"seats"`
-	Instructor string            `json:"instructor"`
-	ExamDate   string            `json:"exam_date,omitempty"`
+	Number      string            `json:"number"`
+	Schedules   []ScheduleRequest `json:"schedules"`
+	Seats       int               `json:"seats"`
+	Instructor  string            `json:"instructor"`
+	ExamDate    string            `json:"exam_date,omitempty"`
+	MidtermDate string            `json:"midterm_date,omitempty"`
+	Note        string            `json:"note,omitempty"`
+	ReservedFor string            `json:"reserved_for,omitempty"`
 }
 
 // ScheduleRequest represents a schedule slot in a request.
@@ -85,13 +89,28 @@ func (r *CreateCourseRequest) ToEntity() *entity.Course {
 			}
 		}
 
+		var midtermStart, midtermEnd time.Time
+		if s.MidtermDate != "" {
+			ms, me, err := parseThaiExamDate(s.MidtermDate)
+			if err == nil {
+				midtermStart = ms
+				midtermEnd = me
+			} else {
+				log.Printf("Error parsing midterm date: %v", err)
+			}
+		}
+
 		sections[i] = entity.Section{
-			Number:     s.Number,
-			Schedules:  schedules,
-			Seats:      s.Seats,
-			Instructor: s.Instructor,
-			ExamStart:  examStart,
-			ExamEnd:    examEnd,
+			Number:       s.Number,
+			Schedules:    schedules,
+			Seats:        s.Seats,
+			Instructor:   s.Instructor,
+			ExamStart:    examStart,
+			ExamEnd:      examEnd,
+			MidtermStart: midtermStart,
+			MidtermEnd:   midtermEnd,
+			Note:         s.Note,
+			ReservedFor:  s.ReservedFor,
 		}
 	}
 
@@ -105,6 +124,7 @@ func (r *CreateCourseRequest) ToEntity() *entity.Course {
 		Semester:     r.Semester,
 		Year:         r.Year,
 		Program:      r.Program,
+		Campus:       r.Campus,
 		Sections:     sections,
 	}
 }
@@ -123,18 +143,23 @@ type CourseResponse struct {
 	Semester     int               `json:"semester"`
 	Year         int               `json:"year"`
 	Program      string            `json:"program"`
+	Campus       string            `json:"campus,omitempty"`
 	UpdatedAt    string            `json:"updated_at"`
 	Sections     []SectionResponse `json:"sections"`
 }
 
 // SectionResponse represents a section in the response.
 type SectionResponse struct {
-	Number     string             `json:"number"`
-	Schedules  []ScheduleResponse `json:"schedules"`
-	Seats      int                `json:"seats"`
-	Instructor string             `json:"instructor"`
-	ExamStart  string             `json:"exam_start,omitempty"`
-	ExamEnd    string             `json:"exam_end,omitempty"`
+	Number       string             `json:"number"`
+	Schedules    []ScheduleResponse `json:"schedules"`
+	Seats        int                `json:"seats"`
+	Instructor   string             `json:"instructor"`
+	ExamStart    string             `json:"exam_start,omitempty"`
+	ExamEnd      string             `json:"exam_end,omitempty"`
+	MidtermStart string             `json:"midterm_start,omitempty"`
+	MidtermEnd   string             `json:"midterm_end,omitempty"`
+	Note         string             `json:"note,omitempty"`
+	ReservedFor  string             `json:"reserved_for,omitempty"`
 }
 
 // ScheduleResponse represents a schedule slot in the response.
@@ -173,13 +198,25 @@ func ToCourseResponse(c *entity.Course) *CourseResponse {
 			examEndStr = s.ExamEnd.Format("2006-01-02 15:04:05")
 		}
 
+		var midtermStartStr, midtermEndStr string
+		if !s.MidtermStart.IsZero() {
+			midtermStartStr = s.MidtermStart.Format("2006-01-02 15:04:05")
+		}
+		if !s.MidtermEnd.IsZero() {
+			midtermEndStr = s.MidtermEnd.Format("2006-01-02 15:04:05")
+		}
+
 		sections[i] = SectionResponse{
-			Number:     s.Number,
-			Schedules:  schedules,
-			Seats:      s.Seats,
-			Instructor: s.Instructor,
-			ExamStart:  examStartStr,
-			ExamEnd:    examEndStr,
+			Number:       s.Number,
+			Schedules:    schedules,
+			Seats:        s.Seats,
+			Instructor:   s.Instructor,
+			ExamStart:    examStartStr,
+			ExamEnd:      examEndStr,
+			MidtermStart: midtermStartStr,
+			MidtermEnd:   midtermEndStr,
+			Note:         s.Note,
+			ReservedFor:  s.ReservedFor,
 		}
 	}
 
@@ -194,6 +231,7 @@ func ToCourseResponse(c *entity.Course) *CourseResponse {
 		Semester:     c.Semester,
 		Year:         c.Year,
 		Program:      c.Program,
+		Campus:       c.Campus,
 		Sections:     sections,
 		UpdatedAt:    c.UpdatedAt.Format(time.RFC3339),
 	}

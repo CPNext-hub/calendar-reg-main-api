@@ -25,12 +25,16 @@ var courses = map[string]*pb.FetchByCodeResponse{
 		Semester:     1,
 		Year:         2567,
 		Program:      "Undergraduate (Regular)",
+		Campus:       "ขอนแก่น",
 		Sections: []*pb.Section{
 			{
-				Number:     "02",
-				Seats:      40,
-				Instructor: "Assoc. Prof. Dr. Chitsutha Soomlek",
-				ExamDate:   "31 มี.ค. 2567 เวลา 13:00 - 16:00",
+				Number:      "02",
+				Seats:       40,
+				Instructor:  "Assoc. Prof. Dr. Chitsutha Soomlek",
+				ExamDate:    "31 มี.ค. 2567 เวลา 13:00 - 16:00",
+				MidtermDate: "15 ก.พ. 2567 เวลา 09:00 - 12:00",
+				Note:        "",
+				ReservedFor: "",
 				Schedules: []*pb.Schedule{
 					{Day: "Monday", Time: "15:00-17:00", Room: "CP9127", Type: "Lecture"},
 					{Day: "Wednesday", Time: "13:00-15:00", Room: "CP9127", Type: "Lab"},
@@ -48,12 +52,16 @@ var courses = map[string]*pb.FetchByCodeResponse{
 		Semester:     1,
 		Year:         2567,
 		Program:      "Undergraduate (Regular)",
+		Campus:       "ขอนแก่น",
 		Sections: []*pb.Section{
 			{
-				Number:     "01",
-				Seats:      60,
-				Instructor: "Dr. Somchai Prasit",
-				ExamDate:   "28 มี.ค. 2567 เวลา 09:00 - 12:00",
+				Number:      "01",
+				Seats:       60,
+				Instructor:  "Dr. Somchai Prasit",
+				ExamDate:    "28 มี.ค. 2567 เวลา 09:00 - 12:00",
+				MidtermDate: "10 ก.พ. 2567 เวลา 09:00 - 12:00",
+				Note:        "ผู้สอบไม่ผ่าน",
+				ReservedFor: "ผู้ที่สอบไม่ผ่าน50-49-1",
 				Schedules: []*pb.Schedule{
 					{Day: "Tuesday", Time: "09:00-11:00", Room: "CP9101", Type: "Lecture"},
 					{Day: "Thursday", Time: "13:00-15:00", Room: "CP9103", Type: "Lab"},
@@ -71,12 +79,16 @@ var courses = map[string]*pb.FetchByCodeResponse{
 		Semester:     2,
 		Year:         2567,
 		Program:      "Undergraduate (Regular)",
+		Campus:       "หนองคาย",
 		Sections: []*pb.Section{
 			{
-				Number:     "01",
-				Seats:      45,
-				Instructor: "Asst. Prof. Dr. Wanida Kanarkard",
-				ExamDate:   "30 มี.ค. 2567 เวลา 09:00 - 12:00",
+				Number:      "01",
+				Seats:       45,
+				Instructor:  "Asst. Prof. Dr. Wanida Kanarkard",
+				ExamDate:    "30 มี.ค. 2567 เวลา 09:00 - 12:00",
+				MidtermDate: "12 ก.พ. 2567 เวลา 13:00 - 16:00",
+				Note:        "Closed",
+				ReservedFor: "",
 				Schedules: []*pb.Schedule{
 					{Day: "Monday", Time: "09:00-11:00", Room: "CP9205", Type: "Lecture"},
 					{Day: "Friday", Time: "13:00-15:00", Room: "CP9205", Type: "Lab"},
