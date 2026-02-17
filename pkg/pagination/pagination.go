@@ -23,6 +23,24 @@ type PaginatedResult[T any] struct {
 	TotalPages int   `json:"total_pages"`
 }
 
+// Meta holds the pagination metadata.
+type Meta struct {
+	Page       int   `json:"page"`
+	Limit      int   `json:"limit"`
+	Total      int64 `json:"total"`
+	TotalPages int   `json:"total_pages"`
+}
+
+// GetMeta returns the metadata portion of the result.
+func (p PaginatedResult[T]) GetMeta() Meta {
+	return Meta{
+		Page:       p.Page,
+		Limit:      p.Limit,
+		Total:      p.Total,
+		TotalPages: p.TotalPages,
+	}
+}
+
 // FromQuery creates a PaginationQuery from raw page/limit values.
 // Negative values are normalised. limit=0 means "return all".
 func FromQuery(page, limit int) PaginationQuery {

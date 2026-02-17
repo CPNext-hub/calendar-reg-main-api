@@ -79,12 +79,10 @@ func (h *CourseHandler) GetCourses(c *fiber.Ctx) error {
 		return response.InternalError(adapter.NewFiberResponder(c), err.Error())
 	}
 
-	return response.OK(adapter.NewFiberResponder(c), pagination.NewResult(
+	return response.OK(adapter.NewFiberResponder(c),
 		dto.ToCourseResponses(result.Items),
-		result.Page,
-		result.Limit,
-		result.Total,
-	))
+		result.GetMeta(),
+	)
 }
 
 // GetCourse retrieves a course by code.

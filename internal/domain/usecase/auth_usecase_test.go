@@ -42,6 +42,14 @@ func (m *mockUserRepo) FindByUsername(_ context.Context, username string) (*enti
 	return u, nil
 }
 
+func (m *mockUserRepo) GetPaginated(_ context.Context, page, limit int) ([]*entity.User, int64, error) {
+	var users []*entity.User
+	for _, u := range m.users {
+		users = append(users, u)
+	}
+	return users, int64(len(users)), nil
+}
+
 const testJWTSecret = "test-secret-key"
 
 // ----- Register tests -----

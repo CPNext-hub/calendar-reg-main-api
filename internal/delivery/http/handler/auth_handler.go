@@ -2,12 +2,14 @@ package handler
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/delivery/http/adapter"
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/delivery/http/dto"
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/usecase"
 	"github.com/CPNext-hub/calendar-reg-main-api/pkg/constants"
+	"github.com/CPNext-hub/calendar-reg-main-api/pkg/pagination"
 	"github.com/CPNext-hub/calendar-reg-main-api/pkg/response"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -160,4 +162,37 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	return response.OK(adapter.NewFiberResponder(c), dto.LoginResponse{Token: token})
+}
+
+// GetUsers retrieves users with pagination (admin-only).
+// @Summary Get users (paginated)
+// @Description Retrieve a paginated list of users. Requires superadmin or admin JWT. Use limit=0 to fetch all.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param page query int false "Page number (default 1)"
+// @Param limit query int false "Items per page (default 10, 0=all)"
+// @Security BearerAuth
+// @Success 200 {object} interface{}
+// @Failure 401 {object} interface{}
+// @Failure 403 {object} interface{}
+// @Failure 500 {object} interface{}
+// @Router /auth/users [get]
+func (h *AuthHandler) GetUsers(c *fiber.Ctx) error {
+	page, _ := strconv.Atoi(c.Query("page"))
+	limit, _ := strconv.Atoi(c.Query("limit"))
+	pq := pagination.FromQuery(page, limit)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	result, err := h.usecase.GetUsersPaginated(ctx, pq)
+	if err != nil {
+		return response.InternalError(adapter.NewFiberResponder(c), err.Error())
+	}
+
+	return response.OK(adapter.NewFiberResponder(c),
+		dto.ToUserResponses(result.Items),
+		result.GetMeta(),
+	)
 }

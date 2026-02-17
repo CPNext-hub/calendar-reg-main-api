@@ -41,3 +41,30 @@ func ToRegisterResponse(user *entity.User) *RegisterResponse {
 		Role:     string(user.Role),
 	}
 }
+
+// ---------- User list DTOs ----------
+
+// UserResponse represents a user in list responses (no password).
+type UserResponse struct {
+	ID       string `json:"id" example:"60f7b3b3b3b3b3b3b3b3b3b3"`
+	Username string `json:"username" example:"admin1"`
+	Role     string `json:"role" example:"admin"`
+}
+
+// ToUserResponse converts a User entity to a UserResponse.
+func ToUserResponse(user *entity.User) *UserResponse {
+	return &UserResponse{
+		ID:       user.ID,
+		Username: user.Username,
+		Role:     user.Role,
+	}
+}
+
+// ToUserResponses converts a slice of User entities to UserResponses.
+func ToUserResponses(users []*entity.User) []*UserResponse {
+	result := make([]*UserResponse, len(users))
+	for i, u := range users {
+		result[i] = ToUserResponse(u)
+	}
+	return result
+}

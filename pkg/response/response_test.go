@@ -57,8 +57,16 @@ func TestOK(t *testing.T) {
 		t.Errorf("expected status %d, got %d", StatusOK, m.statusCode)
 	}
 	b := bodyAs(t, m)
-	if !b.Success {
-		t.Error("expected success=true")
+	// Check Data Wrapper
+	wrapper, ok := b.Data.(map[string]interface{})
+	if !ok {
+		t.Fatal("expected data to be a map (wrapper)")
+	}
+
+	// Check Inner Data
+	d, ok := wrapper["data"].(map[string]interface{})
+	if !ok || d["key"] != "value" {
+		t.Error("expected inner data to contain key=value")
 	}
 	if b.Error != nil {
 		t.Error("expected no error body")
@@ -77,6 +85,48 @@ func TestCreated(t *testing.T) {
 	b := bodyAs(t, m)
 	if !b.Success {
 		t.Error("expected success=true")
+	}
+
+	wrapper, ok := b.Data.(map[string]interface{})
+	if !ok {
+		t.Fatal("expected data to be a map (wrapper)")
+	}
+	if wrapper["data"] != "new-item" {
+		t.Errorf("expected inner data to be 'new-item', got %v", wrapper["data"])
+	}
+}
+
+func TestOK_WithMeta(t *testing.T) {
+	m := newMock()
+	data := map[string]string{"key": "value"}
+	meta := map[string]int{"page": 1}
+	err := OK(m, data, meta)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if m.statusCode != StatusOK {
+		t.Errorf("expected status %d, got %d", StatusOK, m.statusCode)
+	}
+	b := bodyAs(t, m)
+	if !b.Success {
+		t.Error("expected success=true")
+	}
+	// Check Data Wrapper
+	wrapper, ok := b.Data.(map[string]interface{})
+	if !ok {
+		t.Fatal("expected data to be a map (wrapper)")
+	}
+
+	// Check Inner Data
+	d, ok := wrapper["data"].(map[string]interface{})
+	if !ok || d["key"] != "value" {
+		t.Error("expected inner data to contain key=value")
+	}
+
+	// Check Metadata
+	mt, ok := wrapper["metadata"].(map[string]interface{})
+	if !ok || int(mt["page"].(float64)) != 1 { // JSON numbers are float64
+		t.Error("expected metadata to contain page=1")
 	}
 }
 
@@ -214,8 +264,15 @@ func TestOK_DataIsPresent(t *testing.T) {
 	m := newMock()
 	_ = OK(m, []string{"a", "b"})
 	b := bodyAs(t, m)
-	if b.Data == nil {
-		t.Error("expected data to be present")
+
+	wrapper, ok := b.Data.(map[string]interface{})
+	if !ok {
+		t.Fatal("expected data to be a map (wrapper)")
+	}
+
+	list, ok := wrapper["data"].([]interface{})
+	if !ok || len(list) != 2 {
+		t.Error("expected inner data to be a list of 2 items")
 	}
 }
 

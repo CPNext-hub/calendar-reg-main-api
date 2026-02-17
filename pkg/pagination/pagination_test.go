@@ -98,8 +98,22 @@ func TestNewResult_EmptyItems(t *testing.T) {
 }
 
 func TestNewResult_LimitZeroEmptyItems(t *testing.T) {
-	r := NewResult([]string{}, 1, 0, 0)
+	items := []string{}
+	r := NewResult(items, 1, 0, 0)
 	if r.TotalPages != 0 {
 		t.Errorf("expected totalPages=0 for limit=0 and empty, got %d", r.TotalPages)
+	}
+}
+
+func TestGetMeta(t *testing.T) {
+	result := PaginatedResult[string]{
+		Page:       2,
+		Limit:      10,
+		Total:      100,
+		TotalPages: 10,
+	}
+	meta := result.GetMeta()
+	if meta.Page != 2 || meta.Limit != 10 || meta.Total != 100 || meta.TotalPages != 10 {
+		t.Error("GetMeta returned incorrect values")
 	}
 }

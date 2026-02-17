@@ -9,6 +9,7 @@ import (
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/entity"
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/repository"
 	"github.com/CPNext-hub/calendar-reg-main-api/pkg/constants"
+	"github.com/CPNext-hub/calendar-reg-main-api/pkg/pagination"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -18,6 +19,7 @@ type AuthUsecase interface {
 	Register(ctx context.Context, username, password string, role string, callerRole *string) (*entity.User, error)
 	Login(ctx context.Context, username, password string) (string, error)
 	SeedSuperAdmin(ctx context.Context, username, password string)
+	GetUsersPaginated(ctx context.Context, pq pagination.PaginationQuery) (*pagination.PaginatedResult[*entity.User], error)
 }
 
 type authUsecase struct {
@@ -141,4 +143,13 @@ func (u *authUsecase) Login(ctx context.Context, username, password string) (str
 	}
 
 	return signed, nil
+}
+
+func (u *authUsecase) GetUsersPaginated(ctx context.Context, pq pagination.PaginationQuery) (*pagination.PaginatedResult[*entity.User], error) {
+	items, total, err := u.repo.GetPaginated(ctx, pq.Page, pq.Limit)
+	if err != nil {
+		return nil, err
+	}
+	result := pagination.NewResult(items, pq.Page, pq.Limit, total)
+	return &result, nil
 }

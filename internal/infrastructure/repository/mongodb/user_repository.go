@@ -9,6 +9,7 @@ import (
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/repository"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 const userCollection = "users"
@@ -86,6 +87,9 @@ func (r *userRepository) Create(ctx context.Context, user *entity.User) error {
 	return nil
 }
 
+// notDeletedUser is the filter to exclude soft-deleted user documents.
+var notDeletedUser = bson.M{"deleted_at": bson.M{"$exists": false}}
+
 func (r *userRepository) FindByUsername(ctx context.Context, username string) (*entity.User, error) {
 	var model userModel
 	filter := bson.M{"username": username, "deleted_at": bson.M{"$exists": false}}
@@ -97,4 +101,37 @@ func (r *userRepository) FindByUsername(ctx context.Context, username string) (*
 		return nil, err
 	}
 	return model.toEntity(), nil
+}
+
+func (r *userRepository) GetPaginated(ctx context.Context, page, limit int) ([]*entity.User, int64, error) {
+	col := r.db.Collection(userCollection)
+
+	total, err := col.CountDocuments(ctx, notDeletedUser)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	opts := options.Find()
+	if limit > 0 {
+		skip := int64((page - 1) * limit)
+		opts.SetSkip(skip)
+		opts.SetLimit(int64(limit))
+	}
+
+	cursor, err := col.Find(ctx, notDeletedUser, opts)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var models []*userModel
+	if err := cursor.All(ctx, &models); err != nil {
+		return nil, 0, err
+	}
+
+	users := make([]*entity.User, len(models))
+	for i, m := range models {
+		users[i] = m.toEntity()
+	}
+	return users, total, nil
 }

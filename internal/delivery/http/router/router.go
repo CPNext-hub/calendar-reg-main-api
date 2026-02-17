@@ -31,6 +31,7 @@ func SetupRoutes(app *fiber.App, h *Handlers, jwtSecret string) {
 	auth.Post("/login", h.Auth.Login)
 	// Protected: create user with any role (superadmin/admin only)
 	auth.Post("/users", middleware.JWTAuth(jwtSecret), middleware.RequireRole(constants.RoleSuperAdmin, constants.RoleAdmin), h.Auth.CreateUser)
+	auth.Get("/users", middleware.JWTAuth(jwtSecret), middleware.RequireRole(constants.RoleSuperAdmin, constants.RoleAdmin), h.Auth.GetUsers)
 
 	// ---------- Course routes ----------
 	courses := api.Group("/courses")
