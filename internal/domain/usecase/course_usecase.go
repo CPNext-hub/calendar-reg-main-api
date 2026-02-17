@@ -6,12 +6,14 @@ import (
 
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/entity"
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/repository"
+	"github.com/CPNext-hub/calendar-reg-main-api/pkg/pagination"
 )
 
 // CourseUsecase defines the business logic for courses.
 type CourseUsecase interface {
 	CreateCourse(ctx context.Context, course *entity.Course) error
 	GetAllCourses(ctx context.Context) ([]*entity.Course, error)
+	GetCoursesPaginated(ctx context.Context, pq pagination.PaginationQuery) (*pagination.PaginatedResult[*entity.Course], error)
 	GetCourseByCode(ctx context.Context, code string) (*entity.Course, error)
 	DeleteCourse(ctx context.Context, code string) error
 }
@@ -40,6 +42,15 @@ func (u *courseUsecase) CreateCourse(ctx context.Context, course *entity.Course)
 
 func (u *courseUsecase) GetAllCourses(ctx context.Context) ([]*entity.Course, error) {
 	return u.repo.GetAll(ctx)
+}
+
+func (u *courseUsecase) GetCoursesPaginated(ctx context.Context, pq pagination.PaginationQuery) (*pagination.PaginatedResult[*entity.Course], error) {
+	items, total, err := u.repo.GetPaginated(ctx, pq.Page, pq.Limit)
+	if err != nil {
+		return nil, err
+	}
+	result := pagination.NewResult(items, pq.Page, pq.Limit, total)
+	return &result, nil
 }
 
 func (u *courseUsecase) GetCourseByCode(ctx context.Context, code string) (*entity.Course, error) {

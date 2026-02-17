@@ -1,0 +1,277 @@
+package usecase
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/entity"
+	"github.com/CPNext-hub/calendar-reg-main-api/pkg/pagination"
+)
+
+// ----- mock CourseRepository -----
+
+type mockCourseRepo struct {
+	courses    map[string]*entity.Course
+	createErr  error
+	getByErr   error
+	getAllErr  error
+	pagErr     error
+	deleteErr  error
+	allCourses []*entity.Course
+}
+
+func newMockCourseRepo() *mockCourseRepo {
+	return &mockCourseRepo{courses: make(map[string]*entity.Course)}
+}
+
+func (m *mockCourseRepo) Create(_ context.Context, c *entity.Course) error {
+	if m.createErr != nil {
+		return m.createErr
+	}
+	m.courses[c.Code] = c
+	return nil
+}
+
+func (m *mockCourseRepo) GetAll(_ context.Context) ([]*entity.Course, error) {
+	if m.getAllErr != nil {
+		return nil, m.getAllErr
+	}
+	return m.allCourses, nil
+}
+
+func (m *mockCourseRepo) GetPaginated(_ context.Context, page, limit int) ([]*entity.Course, int64, error) {
+	if m.pagErr != nil {
+		return nil, 0, m.pagErr
+	}
+	return m.allCourses, int64(len(m.allCourses)), nil
+}
+
+func (m *mockCourseRepo) GetByCode(_ context.Context, code string) (*entity.Course, error) {
+	if m.getByErr != nil {
+		return nil, m.getByErr
+	}
+	c, ok := m.courses[code]
+	if !ok {
+		return nil, nil
+	}
+	return c, nil
+}
+
+func (m *mockCourseRepo) SoftDelete(_ context.Context, code string) error {
+	if m.deleteErr != nil {
+		return m.deleteErr
+	}
+	delete(m.courses, code)
+	return nil
+}
+
+// ----- CreateCourse tests -----
+
+func TestCreateCourse_Success(t *testing.T) {
+	repo := newMockCourseRepo()
+	uc := NewCourseUsecase(repo)
+
+	course := &entity.Course{Code: "CS101"}
+	err := uc.CreateCourse(context.Background(), course)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if _, ok := repo.courses["CS101"]; !ok {
+		t.Error("expected course to be stored in repo")
+	}
+}
+
+func TestCreateCourse_AlreadyExists(t *testing.T) {
+	repo := newMockCourseRepo()
+	repo.courses["CS101"] = &entity.Course{Code: "CS101"}
+	uc := NewCourseUsecase(repo)
+
+	err := uc.CreateCourse(context.Background(), &entity.Course{Code: "CS101"})
+	if err == nil {
+		t.Fatal("expected error for duplicate course")
+	}
+	if err.Error() != "course code already exists" {
+		t.Errorf("expected 'course code already exists', got %q", err.Error())
+	}
+}
+
+func TestCreateCourse_RepoGetByCodeError(t *testing.T) {
+	repo := newMockCourseRepo()
+	repo.getByErr = errors.New("db error")
+	uc := NewCourseUsecase(repo)
+
+	err := uc.CreateCourse(context.Background(), &entity.Course{Code: "CS101"})
+	if err == nil || err.Error() != "db error" {
+		t.Errorf("expected 'db error', got %v", err)
+	}
+}
+
+func TestCreateCourse_RepoCreateError(t *testing.T) {
+	repo := newMockCourseRepo()
+	repo.createErr = errors.New("insert failed")
+	uc := NewCourseUsecase(repo)
+
+	err := uc.CreateCourse(context.Background(), &entity.Course{Code: "CS101"})
+	if err == nil || err.Error() != "insert failed" {
+		t.Errorf("expected 'insert failed', got %v", err)
+	}
+}
+
+// ----- GetAllCourses tests -----
+
+func TestGetAllCourses_Success(t *testing.T) {
+	repo := newMockCourseRepo()
+	repo.allCourses = []*entity.Course{{Code: "CS101"}, {Code: "CS102"}}
+	uc := NewCourseUsecase(repo)
+
+	courses, err := uc.GetAllCourses(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(courses) != 2 {
+		t.Errorf("expected 2 courses, got %d", len(courses))
+	}
+}
+
+func TestGetAllCourses_Error(t *testing.T) {
+	repo := newMockCourseRepo()
+	repo.getAllErr = errors.New("find failed")
+	uc := NewCourseUsecase(repo)
+
+	_, err := uc.GetAllCourses(context.Background())
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+// ----- GetCoursesPaginated tests -----
+
+func TestGetCoursesPaginated_Success(t *testing.T) {
+	repo := newMockCourseRepo()
+	repo.allCourses = []*entity.Course{{Code: "CS101"}, {Code: "CS102"}, {Code: "CS103"}}
+	uc := NewCourseUsecase(repo)
+
+	pq := pagination.PaginationQuery{Page: 1, Limit: 10}
+	result, err := uc.GetCoursesPaginated(context.Background(), pq)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Total != 3 {
+		t.Errorf("expected total=3, got %d", result.Total)
+	}
+	if len(result.Items) != 3 {
+		t.Errorf("expected 3 items, got %d", len(result.Items))
+	}
+	if result.Page != 1 {
+		t.Errorf("expected page=1, got %d", result.Page)
+	}
+}
+
+func TestGetCoursesPaginated_LimitZero(t *testing.T) {
+	repo := newMockCourseRepo()
+	repo.allCourses = []*entity.Course{{Code: "CS101"}}
+	uc := NewCourseUsecase(repo)
+
+	pq := pagination.PaginationQuery{Page: 1, Limit: 0}
+	result, err := uc.GetCoursesPaginated(context.Background(), pq)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.TotalPages != 1 {
+		t.Errorf("expected totalPages=1 for limit=0, got %d", result.TotalPages)
+	}
+}
+
+func TestGetCoursesPaginated_Error(t *testing.T) {
+	repo := newMockCourseRepo()
+	repo.pagErr = errors.New("paginate failed")
+	uc := NewCourseUsecase(repo)
+
+	pq := pagination.PaginationQuery{Page: 1, Limit: 10}
+	_, err := uc.GetCoursesPaginated(context.Background(), pq)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+// ----- GetCourseByCode tests -----
+
+func TestGetCourseByCode_Found(t *testing.T) {
+	repo := newMockCourseRepo()
+	repo.courses["CS101"] = &entity.Course{Code: "CS101", NameEN: "Intro CS"}
+	uc := NewCourseUsecase(repo)
+
+	course, err := uc.GetCourseByCode(context.Background(), "CS101")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if course == nil || course.NameEN != "Intro CS" {
+		t.Error("expected to find course with correct name")
+	}
+}
+
+func TestGetCourseByCode_NotFound(t *testing.T) {
+	repo := newMockCourseRepo()
+	uc := NewCourseUsecase(repo)
+
+	course, err := uc.GetCourseByCode(context.Background(), "NOPE")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if course != nil {
+		t.Error("expected nil for non-existent course")
+	}
+}
+
+func TestGetCourseByCode_Error(t *testing.T) {
+	repo := newMockCourseRepo()
+	repo.getByErr = errors.New("db error")
+	uc := NewCourseUsecase(repo)
+
+	_, err := uc.GetCourseByCode(context.Background(), "CS101")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+// ----- DeleteCourse tests -----
+
+func TestDeleteCourse_Success(t *testing.T) {
+	repo := newMockCourseRepo()
+	repo.courses["CS101"] = &entity.Course{Code: "CS101"}
+	uc := NewCourseUsecase(repo)
+
+	err := uc.DeleteCourse(context.Background(), "CS101")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := repo.courses["CS101"]; ok {
+		t.Error("expected course to be deleted from repo")
+	}
+}
+
+func TestDeleteCourse_NotFound(t *testing.T) {
+	repo := newMockCourseRepo()
+	uc := NewCourseUsecase(repo)
+
+	err := uc.DeleteCourse(context.Background(), "NOPE")
+	if err == nil {
+		t.Fatal("expected error for non-existent course")
+	}
+	if err.Error() != "course not found" {
+		t.Errorf("expected 'course not found', got %q", err.Error())
+	}
+}
+
+func TestDeleteCourse_RepoError(t *testing.T) {
+	repo := newMockCourseRepo()
+	repo.courses["CS101"] = &entity.Course{Code: "CS101"}
+	repo.deleteErr = errors.New("delete failed")
+	uc := NewCourseUsecase(repo)
+
+	err := uc.DeleteCourse(context.Background(), "CS101")
+	if err == nil || err.Error() != "delete failed" {
+		t.Errorf("expected 'delete failed', got %v", err)
+	}
+}

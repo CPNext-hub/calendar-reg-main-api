@@ -9,6 +9,7 @@ import (
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/repository"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 const courseCollection = "courses"
@@ -188,6 +189,42 @@ func (r *courseRepository) GetAll(ctx context.Context) ([]*entity.Course, error)
 		courses[i] = m.toEntity()
 	}
 	return courses, nil
+}
+
+func (r *courseRepository) GetPaginated(ctx context.Context, page, limit int) ([]*entity.Course, int64, error) {
+	col := r.db.Collection(courseCollection)
+
+	// Count total matching documents.
+	total, err := col.CountDocuments(ctx, notDeleted)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Build find options.
+	opts := options.Find()
+	if limit > 0 {
+		skip := int64((page - 1) * limit)
+		opts.SetSkip(skip)
+		opts.SetLimit(int64(limit))
+	}
+	// limit == 0 → no skip/limit → return all
+
+	cursor, err := col.Find(ctx, notDeleted, opts)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var models []*courseModel
+	if err := cursor.All(ctx, &models); err != nil {
+		return nil, 0, err
+	}
+
+	courses := make([]*entity.Course, len(models))
+	for i, m := range models {
+		courses[i] = m.toEntity()
+	}
+	return courses, total, nil
 }
 
 func (r *courseRepository) GetByCode(ctx context.Context, code string) (*entity.Course, error) {

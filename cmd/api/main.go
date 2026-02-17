@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/config"
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/delivery/http/server"
 )
@@ -15,6 +17,9 @@ import (
 // @host localhost:8080
 // @BasePath /api/v1
 func main() {
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("failed to load config: %v", err)
+	}
 	server.Start(cfg)
 }

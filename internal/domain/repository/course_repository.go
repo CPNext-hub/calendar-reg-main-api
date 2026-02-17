@@ -10,6 +10,7 @@ import (
 type CourseRepository interface {
 	Create(ctx context.Context, course *entity.Course) error
 	GetAll(ctx context.Context) ([]*entity.Course, error)
+	GetPaginated(ctx context.Context, page, limit int) ([]*entity.Course, int64, error)
 	GetByCode(ctx context.Context, code string) (*entity.Course, error)
 	SoftDelete(ctx context.Context, code string) error
 }

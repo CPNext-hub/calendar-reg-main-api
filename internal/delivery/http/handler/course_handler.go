@@ -2,11 +2,13 @@ package handler
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/delivery/http/adapter"
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/delivery/http/dto"
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/usecase"
+	"github.com/CPNext-hub/calendar-reg-main-api/pkg/pagination"
 	"github.com/CPNext-hub/calendar-reg-main-api/pkg/response"
 	"github.com/gofiber/fiber/v2"
 )
@@ -53,25 +55,36 @@ func (h *CourseHandler) CreateCourse(c *fiber.Ctx) error {
 	return response.Created(adapter.NewFiberResponder(c), dto.ToCourseResponse(course))
 }
 
-// GetCourses retrieves all courses.
-// @Summary Get all courses
-// @Description Retrieve a list of all courses
+// GetCourses retrieves courses with pagination.
+// @Summary Get courses (paginated)
+// @Description Retrieve a paginated list of courses. Use limit=0 to fetch all.
 // @Tags courses
 // @Accept json
 // @Produce json
-// @Success 200 {array} dto.CourseResponse
+// @Param page query int false "Page number (default 1)"
+// @Param limit query int false "Items per page (default 10, 0=all)"
+// @Success 200 {object} interface{}
 // @Failure 500 {object} interface{}
 // @Router /courses [get]
 func (h *CourseHandler) GetCourses(c *fiber.Ctx) error {
+	page, _ := strconv.Atoi(c.Query("page"))
+	limit, _ := strconv.Atoi(c.Query("limit"))
+	pq := pagination.FromQuery(page, limit)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	courses, err := h.usecase.GetAllCourses(ctx)
+	result, err := h.usecase.GetCoursesPaginated(ctx, pq)
 	if err != nil {
 		return response.InternalError(adapter.NewFiberResponder(c), err.Error())
 	}
 
-	return response.OK(adapter.NewFiberResponder(c), dto.ToCourseResponses(courses))
+	return response.OK(adapter.NewFiberResponder(c), pagination.NewResult(
+		dto.ToCourseResponses(result.Items),
+		result.Page,
+		result.Limit,
+		result.Total,
+	))
 }
 
 // GetCourse retrieves a course by code.
