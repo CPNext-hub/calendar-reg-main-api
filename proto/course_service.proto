@@ -11,6 +11,8 @@ service CourseService {
 
 message FetchByCodeRequest {
   string code = 1;
+  int32 acadyear = 2; // e.g. 2568
+  int32 semester = 3; // e.g. 1, 2, 3
 }
 
 message FetchByCodeResponse {

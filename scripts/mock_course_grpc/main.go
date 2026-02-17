@@ -103,7 +103,7 @@ type server struct {
 }
 
 func (s *server) FetchByCode(_ context.Context, req *pb.FetchByCodeRequest) (*pb.FetchByCodeResponse, error) {
-	log.Printf("FetchByCode request: code=%s", req.Code)
+	log.Printf("FetchByCode request: code=%s acadyear=%d semester=%d", req.Code, req.Acadyear, req.Semester)
 
 	// Simulate slow response
 	time.Sleep(20 * time.Second)

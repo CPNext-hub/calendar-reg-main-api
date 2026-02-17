@@ -8,6 +8,6 @@ import (
 
 // CourseExternalAPI abstracts the external course data API.
 type CourseExternalAPI interface {
-	// FetchByCode fetches a course from the external API by its code.
-	FetchByCode(ctx context.Context, code string) (*entity.Course, error)
+	// FetchByCode fetches a course from the external API by its code, academic year, and semester.
+	FetchByCode(ctx context.Context, code string, acadyear, semester int) (*entity.Course, error)
 }

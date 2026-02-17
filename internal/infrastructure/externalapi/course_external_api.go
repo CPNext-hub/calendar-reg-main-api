@@ -23,8 +23,12 @@ func NewCourseExternalAPI(conn grpc.ClientConnInterface) repository.CourseExtern
 }
 
 // FetchByCode calls the external gRPC service and returns a parsed Course entity.
-func (a *courseExternalAPI) FetchByCode(ctx context.Context, code string) (*entity.Course, error) {
-	resp, err := a.client.FetchByCode(ctx, &pb.FetchByCodeRequest{Code: code})
+func (a *courseExternalAPI) FetchByCode(ctx context.Context, code string, acadyear, semester int) (*entity.Course, error) {
+	resp, err := a.client.FetchByCode(ctx, &pb.FetchByCodeRequest{
+		Code:     code,
+		Acadyear: int32(acadyear),
+		Semester: int32(semester),
+	})
 	if err != nil {
 		return nil, err
 	}

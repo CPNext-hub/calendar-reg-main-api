@@ -26,16 +26,21 @@ type courseModel struct {
 	Semester     int            `bson:"semester"`
 	Year         int            `bson:"year"`
 	Program      string         `bson:"program"`
+	Campus       string         `bson:"campus,omitempty"`
 	Sections     []sectionModel `bson:"sections"`
 }
 
 type sectionModel struct {
-	Number     string          `bson:"number"`
-	Schedules  []scheduleModel `bson:"schedules"`
-	Seats      int             `bson:"seats"`
-	Instructor string          `bson:"instructor"`
-	ExamStart  time.Time       `bson:"exam_start,omitempty"`
-	ExamEnd    time.Time       `bson:"exam_end,omitempty"`
+	Number       string          `bson:"number"`
+	Schedules    []scheduleModel `bson:"schedules"`
+	Seats        int             `bson:"seats"`
+	Instructor   string          `bson:"instructor"`
+	ExamStart    time.Time       `bson:"exam_start,omitempty"`
+	ExamEnd      time.Time       `bson:"exam_end,omitempty"`
+	MidtermStart time.Time       `bson:"midterm_start,omitempty"`
+	MidtermEnd   time.Time       `bson:"midterm_end,omitempty"`
+	Note         string          `bson:"note,omitempty"`
+	ReservedFor  string          `bson:"reserved_for,omitempty"`
 }
 
 type scheduleModel struct {
@@ -44,6 +49,16 @@ type scheduleModel struct {
 	EndTime   time.Time `bson:"end_time"`
 	Room      string    `bson:"room"`
 	Type      string    `bson:"type"`
+}
+
+// compositeFilter builds the composite key filter for lookups.
+func compositeFilter(code string, year, semester int) bson.M {
+	return bson.M{
+		"code":       code,
+		"year":       year,
+		"semester":   semester,
+		"deleted_at": bson.M{"$exists": false},
+	}
 }
 
 // toEntity converts a MongoDB model to a domain entity.
@@ -61,12 +76,16 @@ func (m *courseModel) toEntity() *entity.Course {
 			}
 		}
 		sections[i] = entity.Section{
-			Number:     s.Number,
-			Schedules:  schedules,
-			Seats:      s.Seats,
-			Instructor: s.Instructor,
-			ExamStart:  s.ExamStart,
-			ExamEnd:    s.ExamEnd,
+			Number:       s.Number,
+			Schedules:    schedules,
+			Seats:        s.Seats,
+			Instructor:   s.Instructor,
+			ExamStart:    s.ExamStart,
+			ExamEnd:      s.ExamEnd,
+			MidtermStart: s.MidtermStart,
+			MidtermEnd:   s.MidtermEnd,
+			Note:         s.Note,
+			ReservedFor:  s.ReservedFor,
 		}
 	}
 
@@ -91,6 +110,7 @@ func (m *courseModel) toEntity() *entity.Course {
 		Semester:     m.Semester,
 		Year:         m.Year,
 		Program:      m.Program,
+		Campus:       m.Campus,
 		Sections:     sections,
 	}
 }
@@ -110,12 +130,16 @@ func toCourseModel(e *entity.Course) *courseModel {
 			}
 		}
 		sections[i] = sectionModel{
-			Number:     s.Number,
-			Schedules:  schedules,
-			Seats:      s.Seats,
-			Instructor: s.Instructor,
-			ExamStart:  s.ExamStart,
-			ExamEnd:    s.ExamEnd,
+			Number:       s.Number,
+			Schedules:    schedules,
+			Seats:        s.Seats,
+			Instructor:   s.Instructor,
+			ExamStart:    s.ExamStart,
+			ExamEnd:      s.ExamEnd,
+			MidtermStart: s.MidtermStart,
+			MidtermEnd:   s.MidtermEnd,
+			Note:         s.Note,
+			ReservedFor:  s.ReservedFor,
 		}
 	}
 
@@ -129,6 +153,7 @@ func toCourseModel(e *entity.Course) *courseModel {
 		Semester:     e.Semester,
 		Year:         e.Year,
 		Program:      e.Program,
+		Campus:       e.Campus,
 		Sections:     sections,
 	}
 	m.CreatedAt = e.CreatedAt
@@ -227,9 +252,9 @@ func (r *courseRepository) GetPaginated(ctx context.Context, page, limit int) ([
 	return courses, total, nil
 }
 
-func (r *courseRepository) GetByCode(ctx context.Context, code string) (*entity.Course, error) {
+func (r *courseRepository) GetByKey(ctx context.Context, code string, year, semester int) (*entity.Course, error) {
 	var model courseModel
-	filter := bson.M{"code": code, "deleted_at": bson.M{"$exists": false}}
+	filter := compositeFilter(code, year, semester)
 	err := r.db.Collection(courseCollection).FindOne(ctx, filter).Decode(&model)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
@@ -244,7 +269,7 @@ func (r *courseRepository) Update(ctx context.Context, course *entity.Course) er
 	course.UpdatedAt = time.Now()
 	model := toCourseModel(course)
 
-	filter := bson.M{"code": course.Code, "deleted_at": bson.M{"$exists": false}}
+	filter := compositeFilter(course.Code, course.Year, course.Semester)
 	update := bson.M{
 		"$set": bson.M{
 			"name_en":      model.NameEN,
@@ -255,6 +280,7 @@ func (r *courseRepository) Update(ctx context.Context, course *entity.Course) er
 			"semester":     model.Semester,
 			"year":         model.Year,
 			"program":      model.Program,
+			"campus":       model.Campus,
 			"sections":     model.Sections,
 			"updated_at":   model.UpdatedAt,
 		},
@@ -270,9 +296,9 @@ func (r *courseRepository) Update(ctx context.Context, course *entity.Course) er
 	return nil
 }
 
-func (r *courseRepository) SoftDelete(ctx context.Context, code string) error {
+func (r *courseRepository) SoftDelete(ctx context.Context, code string, year, semester int) error {
 	now := time.Now()
-	filter := bson.M{"code": code, "deleted_at": bson.M{"$exists": false}}
+	filter := compositeFilter(code, year, semester)
 	update := bson.M{"$set": bson.M{"deleted_at": now, "updated_at": now}}
 
 	result, err := r.db.Collection(courseCollection).UpdateOne(ctx, filter, update)

@@ -17,8 +17,8 @@ type CourseUsecase interface {
 	CreateCourse(ctx context.Context, course *entity.Course) error
 	GetAllCourses(ctx context.Context) ([]*entity.Course, error)
 	GetCoursesPaginated(ctx context.Context, pq pagination.PaginationQuery) (*pagination.PaginatedResult[*entity.Course], error)
-	GetCourseByCode(ctx context.Context, code string) (*entity.Course, error)
-	DeleteCourse(ctx context.Context, code string) error
+	GetCourseByCode(ctx context.Context, code string, acadyear, semester int) (*entity.Course, error)
+	DeleteCourse(ctx context.Context, code string, year, semester int) error
 	ProcessRefreshJob(job queue.RefreshJob)
 }
 
@@ -34,12 +34,12 @@ func NewCourseUsecase(repo repository.CourseRepository, extAPI repository.Course
 }
 
 func (u *courseUsecase) CreateCourse(ctx context.Context, course *entity.Course) error {
-	existing, err := u.repo.GetByCode(ctx, course.Code)
+	existing, err := u.repo.GetByKey(ctx, course.Code, course.Year, course.Semester)
 	if err != nil {
 		return err
 	}
 	if existing != nil {
-		return errors.New("course code already exists")
+		return errors.New("course already exists for this code/year/semester")
 	}
 	return u.repo.Create(ctx, course)
 }
@@ -57,8 +57,8 @@ func (u *courseUsecase) GetCoursesPaginated(ctx context.Context, pq pagination.P
 	return &result, nil
 }
 
-func (u *courseUsecase) GetCourseByCode(ctx context.Context, code string) (*entity.Course, error) {
-	course, err := u.repo.GetByCode(ctx, code)
+func (u *courseUsecase) GetCourseByCode(ctx context.Context, code string, acadyear, semester int) (*entity.Course, error) {
+	course, err := u.repo.GetByKey(ctx, code, acadyear, semester)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (u *courseUsecase) GetCourseByCode(ctx context.Context, code string) (*enti
 		}
 
 		resultCh := make(chan queue.JobResult, 1)
-		if !u.refreshQueue.Enqueue(queue.RefreshJob{Code: code, IsNew: true, Result: resultCh}) {
+		if !u.refreshQueue.Enqueue(queue.RefreshJob{Code: code, Acadyear: acadyear, Semester: semester, IsNew: true, Result: resultCh}) {
 			return nil, nil
 		}
 
@@ -94,7 +94,7 @@ func (u *courseUsecase) GetCourseByCode(ctx context.Context, code string) (*enti
 	// Check if last updated today — if not, enqueue a background refresh.
 	if !isToday(course.UpdatedAt) {
 		if u.externalAPI != nil && u.refreshQueue != nil {
-			u.refreshQueue.Enqueue(queue.RefreshJob{Code: code, IsNew: false})
+			u.refreshQueue.Enqueue(queue.RefreshJob{Code: code, Acadyear: course.Year, Semester: course.Semester, IsNew: false})
 		}
 	}
 
@@ -103,14 +103,14 @@ func (u *courseUsecase) GetCourseByCode(ctx context.Context, code string) (*enti
 
 // ProcessRefreshJob is called by worker pool goroutines to fetch and save course data.
 func (u *courseUsecase) ProcessRefreshJob(job queue.RefreshJob) {
-	defer u.refreshQueue.MarkDone(job.Code)
+	defer u.refreshQueue.MarkDone(job.Key())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	fetched, err := u.externalAPI.FetchByCode(ctx, job.Code)
+	fetched, err := u.externalAPI.FetchByCode(ctx, job.Code, job.Acadyear, job.Semester)
 	if err != nil {
-		log.Printf("[worker] fetch failed for %s: %v", job.Code, err)
+		log.Printf("[worker] fetch failed for %s: %v", job.Key(), err)
 		if job.Result != nil {
 			job.Result <- queue.JobResult{Err: err}
 		}
@@ -121,18 +121,18 @@ func (u *courseUsecase) ProcessRefreshJob(job queue.RefreshJob) {
 		// First fetch — create new record.
 		fetched.CreatedAt = time.Now()
 		if saveErr := u.repo.Create(context.Background(), fetched); saveErr != nil {
-			log.Printf("[worker] failed to save new course %s: %v", job.Code, saveErr)
+			log.Printf("[worker] failed to save new course %s: %v", job.Key(), saveErr)
 			if job.Result != nil {
 				job.Result <- queue.JobResult{Err: saveErr}
 			}
 			return
 		}
-		log.Printf("[worker] new course %s fetched and saved", job.Code)
+		log.Printf("[worker] new course %s fetched and saved", job.Key())
 	} else {
 		// Stale refresh — update existing record, preserving identity.
-		existing, getErr := u.repo.GetByCode(ctx, job.Code)
+		existing, getErr := u.repo.GetByKey(ctx, job.Code, job.Acadyear, job.Semester)
 		if getErr != nil || existing == nil {
-			log.Printf("[worker] could not find existing course %s for refresh: %v", job.Code, getErr)
+			log.Printf("[worker] could not find existing course %s for refresh: %v", job.Key(), getErr)
 			return
 		}
 		fetched.ID = existing.ID
@@ -140,10 +140,10 @@ func (u *courseUsecase) ProcessRefreshJob(job queue.RefreshJob) {
 		fetched.CreatedAt = existing.CreatedAt
 
 		if saveErr := u.repo.Update(context.Background(), fetched); saveErr != nil {
-			log.Printf("[worker] failed to update course %s: %v", job.Code, saveErr)
+			log.Printf("[worker] failed to update course %s: %v", job.Key(), saveErr)
 			return
 		}
-		log.Printf("[worker] course %s refreshed and saved", job.Code)
+		log.Printf("[worker] course %s refreshed and saved", job.Key())
 	}
 
 	// Send result back to caller if they're waiting.
@@ -160,13 +160,13 @@ func isToday(t time.Time) bool {
 	return y1 == y2 && m1 == m2 && d1 == d2
 }
 
-func (u *courseUsecase) DeleteCourse(ctx context.Context, code string) error {
-	existing, err := u.repo.GetByCode(ctx, code)
+func (u *courseUsecase) DeleteCourse(ctx context.Context, code string, year, semester int) error {
+	existing, err := u.repo.GetByKey(ctx, code, year, semester)
 	if err != nil {
 		return err
 	}
 	if existing == nil {
 		return errors.New("course not found")
 	}
-	return u.repo.SoftDelete(ctx, code)
+	return u.repo.SoftDelete(ctx, code, year, semester)
 }

@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -18,6 +19,11 @@ type Course struct {
 	Program      string    // e.g., "ปริญญาตรี ภาคปกติ"
 	Campus       string    // e.g., "ขอนแก่น", "หนองคาย"
 	Sections     []Section // multiple sections per course
+}
+
+// Key returns the composite lookup key: "code:year:semester".
+func (c *Course) Key() string {
+	return fmt.Sprintf("%s:%d:%d", c.Code, c.Year, c.Semester)
 }
 
 // Section represents a course section with schedule and instructor info.

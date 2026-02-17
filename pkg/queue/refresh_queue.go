@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"fmt"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -10,9 +11,16 @@ import (
 // RefreshJob represents a background course refresh job.
 type RefreshJob struct {
 	Code      string
+	Acadyear  int  // e.g. 2568
+	Semester  int  // e.g. 1, 2, 3
 	IsNew     bool // true = first fetch (Create), false = stale refresh (Update)
 	EnqueueAt time.Time
 	Result    chan<- JobResult // optional: caller can wait for the result
+}
+
+// Key returns the composite dedup key "code:acadyear:semester".
+func (j RefreshJob) Key() string {
+	return fmt.Sprintf("%s:%d:%d", j.Code, j.Acadyear, j.Semester)
 }
 
 // JobResult holds the outcome of a processed refresh job.
@@ -52,38 +60,39 @@ func New(bufferSize, workers int) *RefreshQueue {
 	}
 }
 
-// Enqueue tries to register a refresh for the given code.
-// Returns false if the code is already being refreshed (dedup) or the queue is full.
+// Enqueue tries to register a refresh for the given composite key.
+// Returns false if the key is already being refreshed (dedup) or the queue is full.
 func (q *RefreshQueue) Enqueue(job RefreshJob) bool {
+	key := job.Key()
 	q.mu.Lock()
-	if q.inflight[job.Code] {
+	if q.inflight[key] {
 		q.mu.Unlock()
-		log.Printf("[queue] refresh already in progress for %s, skipping", job.Code)
+		log.Printf("[queue] refresh already in progress for %s, skipping", key)
 		return false
 	}
-	q.inflight[job.Code] = true
+	q.inflight[key] = true
 	q.mu.Unlock()
 
 	job.EnqueueAt = time.Now()
 
 	select {
 	case q.jobs <- job:
-		log.Printf("[queue] enqueued refresh for %s", job.Code)
+		log.Printf("[queue] enqueued refresh for %s", key)
 		return true
 	default:
 		// Queue full — remove from inflight and reject.
 		q.mu.Lock()
-		delete(q.inflight, job.Code)
+		delete(q.inflight, key)
 		q.mu.Unlock()
-		log.Printf("[queue] queue full, dropped refresh for %s", job.Code)
+		log.Printf("[queue] queue full, dropped refresh for %s", key)
 		return false
 	}
 }
 
-// MarkDone removes a code from the inflight set and increments processed counter.
-func (q *RefreshQueue) MarkDone(code string) {
+// MarkDone removes a key from the inflight set and increments processed counter.
+func (q *RefreshQueue) MarkDone(key string) {
 	q.mu.Lock()
-	delete(q.inflight, code)
+	delete(q.inflight, key)
 	q.mu.Unlock()
 	q.processed.Add(1)
 }

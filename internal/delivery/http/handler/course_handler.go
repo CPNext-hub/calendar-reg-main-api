@@ -98,10 +98,13 @@ func (h *CourseHandler) GetCourses(c *fiber.Ctx) error {
 // @Router /courses/{code} [get]
 func (h *CourseHandler) GetCourse(c *fiber.Ctx) error {
 	code := c.Params("code")
+	acadyear, _ := strconv.Atoi(c.Query("acadyear"))
+	semester, _ := strconv.Atoi(c.Query("semester"))
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	course, err := h.usecase.GetCourseByCode(ctx, code)
+	course, err := h.usecase.GetCourseByCode(ctx, code, acadyear, semester)
 	if err != nil {
 		return response.InternalError(adapter.NewFiberResponder(c), err.Error())
 	}
@@ -124,10 +127,13 @@ func (h *CourseHandler) GetCourse(c *fiber.Ctx) error {
 // @Router /courses/{code} [delete]
 func (h *CourseHandler) DeleteCourse(c *fiber.Ctx) error {
 	code := c.Params("code")
+	acadyear, _ := strconv.Atoi(c.Query("acadyear"))
+	semester, _ := strconv.Atoi(c.Query("semester"))
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := h.usecase.DeleteCourse(ctx, code); err != nil {
+	if err := h.usecase.DeleteCourse(ctx, code, acadyear, semester); err != nil {
 		return response.InternalError(adapter.NewFiberResponder(c), err.Error())
 	}
 

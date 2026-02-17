@@ -24,6 +24,8 @@ const (
 type FetchByCodeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	Acadyear      int32                  `protobuf:"varint,2,opt,name=acadyear,proto3" json:"acadyear,omitempty"` // e.g. 2568
+	Semester      int32                  `protobuf:"varint,3,opt,name=semester,proto3" json:"semester,omitempty"` // e.g. 1, 2, 3
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -63,6 +65,20 @@ func (x *FetchByCodeRequest) GetCode() string {
 		return x.Code
 	}
 	return ""
+}
+
+func (x *FetchByCodeRequest) GetAcadyear() int32 {
+	if x != nil {
+		return x.Acadyear
+	}
+	return 0
+}
+
+func (x *FetchByCodeRequest) GetSemester() int32 {
+	if x != nil {
+		return x.Semester
+	}
+	return 0
 }
 
 type FetchByCodeResponse struct {
@@ -361,9 +377,11 @@ var File_course_service_proto protoreflect.FileDescriptor
 
 const file_course_service_proto_rawDesc = "" +
 	"\n" +
-	"\x14course_service.proto\x12\bcoursepb\"(\n" +
+	"\x14course_service.proto\x12\bcoursepb\"`\n" +
 	"\x12FetchByCodeRequest\x12\x12\n" +
-	"\x04code\x18\x01 \x01(\tR\x04code\"\xc4\x02\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\x12\x1a\n" +
+	"\bacadyear\x18\x02 \x01(\x05R\bacadyear\x12\x1a\n" +
+	"\bsemester\x18\x03 \x01(\x05R\bsemester\"\xc4\x02\n" +
 	"\x13FetchByCodeResponse\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x17\n" +
 	"\aname_en\x18\x02 \x01(\tR\x06nameEn\x12\x17\n" +
