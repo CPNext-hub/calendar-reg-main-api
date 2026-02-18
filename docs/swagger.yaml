@@ -6,6 +6,8 @@ definitions:
         type: string
       credits:
         type: string
+      department:
+        type: string
       faculty:
         type: string
       id:
@@ -32,6 +34,8 @@ definitions:
       code:
         type: string
       credits:
+        type: string
+      department:
         type: string
       faculty:
         type: string
@@ -494,6 +498,16 @@ paths:
         name: code
         required: true
         type: string
+      - description: Academic Year
+        in: query
+        name: acadyear
+        required: true
+        type: integer
+      - description: Semester
+        in: query
+        name: semester
+        required: true
+        type: integer
       produces:
       - application/json
       responses:
@@ -501,6 +515,9 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/dto.CourseResponse'
+        "400":
+          description: Bad Request
+          schema: {}
         "404":
           description: Not Found
           schema: {}

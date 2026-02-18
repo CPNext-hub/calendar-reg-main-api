@@ -314,6 +314,20 @@ const docTemplate = `{
                         "name": "code",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Academic Year",
+                        "name": "acadyear",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Semester",
+                        "name": "semester",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -322,6 +336,10 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/dto.CourseResponse"
                         }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
                     },
                     "404": {
                         "description": "Not Found",
@@ -704,6 +722,9 @@ const docTemplate = `{
                 "credits": {
                     "type": "string"
                 },
+                "department": {
+                    "type": "string"
+                },
                 "faculty": {
                     "type": "string"
                 },
@@ -743,6 +764,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "credits": {
+                    "type": "string"
+                },
+                "department": {
                     "type": "string"
                 },
                 "faculty": {

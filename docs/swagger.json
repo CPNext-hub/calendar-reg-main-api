@@ -308,6 +308,20 @@
                         "name": "code",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Academic Year",
+                        "name": "acadyear",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Semester",
+                        "name": "semester",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -316,6 +330,10 @@
                         "schema": {
                             "$ref": "#/definitions/dto.CourseResponse"
                         }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
                     },
                     "404": {
                         "description": "Not Found",
@@ -698,6 +716,9 @@
                 "credits": {
                     "type": "string"
                 },
+                "department": {
+                    "type": "string"
+                },
                 "faculty": {
                     "type": "string"
                 },
@@ -737,6 +758,9 @@
                     "type": "string"
                 },
                 "credits": {
+                    "type": "string"
+                },
+                "department": {
                     "type": "string"
                 },
                 "faculty": {
