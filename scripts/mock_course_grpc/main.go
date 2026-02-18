@@ -105,11 +105,18 @@ type server struct {
 	pb.UnimplementedCourseServiceServer
 }
 
+// sleepDuration can be modified during tests
+var sleepDuration = 20 * time.Second
+
+// injectable functions for testability
+var runFunc = run
+var logFatal = log.Fatalf
+
 func (s *server) FetchByCode(_ context.Context, req *pb.FetchByCodeRequest) (*pb.FetchByCodeResponse, error) {
 	log.Printf("FetchByCode request: code=%s acadyear=%d semester=%d", req.Code, req.Acadyear, req.Semester)
 
 	// Simulate slow response
-	time.Sleep(20 * time.Second)
+	time.Sleep(sleepDuration)
 
 	course, ok := courses[req.Code]
 	if !ok {
@@ -118,19 +125,32 @@ func (s *server) FetchByCode(_ context.Context, req *pb.FetchByCodeRequest) (*pb
 	return course, nil
 }
 
-func main() {
-	const port = ":50051"
-	lis, err := net.Listen("tcp", port)
+func run(ctx context.Context, addr string, ready chan<- string) error {
+	lis, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		return err
+	}
+
+	if ready != nil {
+		ready <- lis.Addr().String()
 	}
 
 	s := grpc.NewServer()
 	pb.RegisterCourseServiceServer(s, &server{})
 
-	log.Printf("🚀 Mock Course gRPC server running at %s", port)
+	// Handle context cancellation to stop server
+	go func() {
+		<-ctx.Done()
+		s.Stop()
+	}()
+
+	log.Printf("🚀 Mock Course gRPC server running at %s", lis.Addr().String())
 	log.Printf("📚 Available courses: CP353004, CP353002, CP353006")
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+	return s.Serve(lis)
+}
+
+func main() {
+	if err := runFunc(context.Background(), ":50051", nil); err != nil {
+		logFatal("failed to serve: %v", err)
 	}
 }
