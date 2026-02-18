@@ -59,7 +59,8 @@ func (u *courseUsecase) GetCoursesPaginated(ctx context.Context, pq pagination.P
 }
 
 func (u *courseUsecase) GetCourseByCode(ctx context.Context, code string, acadyear, semester int) (*entity.Course, error) {
-	course, err := u.repo.GetByKey(ctx, strings.ToUpper(code), acadyear, semester)
+	code = strings.ToUpper(code)
+	course, err := u.repo.GetByKey(ctx, code, acadyear, semester)
 	if err != nil {
 		return nil, err
 	}
