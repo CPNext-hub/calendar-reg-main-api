@@ -13,6 +13,13 @@ import (
 	"github.com/CPNext-hub/calendar-reg-main-api/pkg/queue"
 )
 
+var (
+	// ErrCourseNotFound is returned when the external API confirms the course does not exist.
+	ErrCourseNotFound = errors.New("course not found")
+	// ErrCourseFetchPending is returned when a background fetch was enqueued but hasn't completed yet.
+	ErrCourseFetchPending = errors.New("course data is being fetched, please try again")
+)
+
 // CourseUsecase defines the business logic for courses.
 type CourseUsecase interface {
 	CreateCourse(ctx context.Context, course *entity.Course) error
@@ -68,28 +75,29 @@ func (u *courseUsecase) GetCourseByCode(ctx context.Context, code string, acadye
 	if course == nil {
 		// Not in DB — enqueue a first-fetch job and wait up to 3 seconds.
 		if u.externalAPI == nil || u.refreshQueue == nil {
-			return nil, nil
+			return nil, ErrCourseNotFound
 		}
 
 		resultCh := make(chan queue.JobResult, 1)
 		if !u.refreshQueue.Enqueue(queue.RefreshJob{Code: code, Acadyear: acadyear, Semester: semester, IsNew: true, Result: resultCh}) {
-			return nil, nil
+			// Already in-flight — tell the client to try again.
+			return nil, ErrCourseFetchPending
 		}
 
 		select {
 		case res := <-resultCh:
 			if res.Err != nil {
 				log.Printf("external fetch failed for %s: %v", code, res.Err)
-				return nil, nil
+				return nil, ErrCourseNotFound
 			}
 			if c, ok := res.Data.(*entity.Course); ok {
 				return c, nil
 			}
-			return nil, nil
+			return nil, ErrCourseNotFound
 
 		case <-time.After(3 * time.Second):
-			log.Printf("external fetch for %s taking too long, returning nil", code)
-			return nil, nil
+			log.Printf("external fetch for %s taking too long, will complete in background", code)
+			return nil, ErrCourseFetchPending
 		}
 	}
 

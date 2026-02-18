@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"time"
 
@@ -106,10 +107,14 @@ func (h *CourseHandler) GetCourse(c *fiber.Ctx) error {
 
 	course, err := h.usecase.GetCourseByCode(ctx, code, acadyear, semester)
 	if err != nil {
-		return response.InternalError(adapter.NewFiberResponder(c), err.Error())
-	}
-	if course == nil {
-		return response.NotFound(adapter.NewFiberResponder(c), "Course not found")
+		switch {
+		case errors.Is(err, usecase.ErrCourseNotFound):
+			return response.NotFound(adapter.NewFiberResponder(c), "Course not found")
+		case errors.Is(err, usecase.ErrCourseFetchPending):
+			return response.OK(adapter.NewFiberResponder(c), map[string]string{"message": "Course data is being fetched, please try again"})
+		default:
+			return response.InternalError(adapter.NewFiberResponder(c), err.Error())
+		}
 	}
 
 	return response.OK(adapter.NewFiberResponder(c), dto.ToCourseResponse(course))

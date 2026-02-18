@@ -229,8 +229,8 @@ func TestGetCourseByCode_NotFound(t *testing.T) {
 	uc := NewCourseUsecase(repo, nil, nil)
 
 	course, err := uc.GetCourseByCode(context.Background(), "NOPE", 2568, 1)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	if !errors.Is(err, ErrCourseNotFound) {
+		t.Fatalf("expected ErrCourseNotFound, got: %v", err)
 	}
 	if course != nil {
 		t.Error("expected nil for non-existent course")
