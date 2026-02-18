@@ -100,6 +100,8 @@ func protoToCourse(resp *pb.FetchByCodeResponse) *entity.Course {
 			MidtermEnd:   midtermEnd,
 			Note:         s.Note,
 			ReservedFor:  s.ReservedFor,
+			Campus:       s.Campus,
+			Program:      s.Program,
 		}
 	}
 
@@ -112,8 +114,6 @@ func protoToCourse(resp *pb.FetchByCodeResponse) *entity.Course {
 		Prerequisite: resp.Prerequisite,
 		Semester:     int(resp.Semester),
 		Year:         int(resp.Year),
-		Program:      resp.Program,
-		Campus:       resp.Campus,
 		Sections:     sections,
 	}
 }

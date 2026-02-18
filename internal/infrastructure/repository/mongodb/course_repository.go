@@ -25,8 +25,6 @@ type courseModel struct {
 	Prerequisite string         `bson:"prerequisite,omitempty"`
 	Semester     int            `bson:"semester"`
 	Year         int            `bson:"year"`
-	Program      string         `bson:"program"`
-	Campus       string         `bson:"campus,omitempty"`
 	Sections     []sectionModel `bson:"sections"`
 }
 
@@ -40,7 +38,9 @@ type sectionModel struct {
 	MidtermStart time.Time       `bson:"midterm_start,omitempty"`
 	MidtermEnd   time.Time       `bson:"midterm_end,omitempty"`
 	Note         string          `bson:"note,omitempty"`
-	ReservedFor  string          `bson:"reserved_for,omitempty"`
+	ReservedFor  []string        `bson:"reserved_for,omitempty"`
+	Campus       string          `bson:"campus,omitempty"`
+	Program      string          `bson:"program,omitempty"`
 }
 
 type scheduleModel struct {
@@ -86,6 +86,8 @@ func (m *courseModel) toEntity() *entity.Course {
 			MidtermEnd:   s.MidtermEnd,
 			Note:         s.Note,
 			ReservedFor:  s.ReservedFor,
+			Campus:       s.Campus,
+			Program:      s.Program,
 		}
 	}
 
@@ -109,8 +111,6 @@ func (m *courseModel) toEntity() *entity.Course {
 		Prerequisite: m.Prerequisite,
 		Semester:     m.Semester,
 		Year:         m.Year,
-		Program:      m.Program,
-		Campus:       m.Campus,
 		Sections:     sections,
 	}
 }
@@ -140,6 +140,8 @@ func toCourseModel(e *entity.Course) *courseModel {
 			MidtermEnd:   s.MidtermEnd,
 			Note:         s.Note,
 			ReservedFor:  s.ReservedFor,
+			Campus:       s.Campus,
+			Program:      s.Program,
 		}
 	}
 
@@ -152,8 +154,6 @@ func toCourseModel(e *entity.Course) *courseModel {
 		Prerequisite: e.Prerequisite,
 		Semester:     e.Semester,
 		Year:         e.Year,
-		Program:      e.Program,
-		Campus:       e.Campus,
 		Sections:     sections,
 	}
 	m.CreatedAt = e.CreatedAt
@@ -216,7 +216,7 @@ func (r *courseRepository) GetAll(ctx context.Context) ([]*entity.Course, error)
 	return courses, nil
 }
 
-func (r *courseRepository) GetPaginated(ctx context.Context, page, limit int) ([]*entity.Course, int64, error) {
+func (r *courseRepository) GetPaginated(ctx context.Context, page, limit int, includeSections bool) ([]*entity.Course, int64, error) {
 	col := r.db.Collection(courseCollection)
 
 	// Count total matching documents.
@@ -227,6 +227,9 @@ func (r *courseRepository) GetPaginated(ctx context.Context, page, limit int) ([
 
 	// Build find options.
 	opts := options.Find()
+	if !includeSections {
+		opts.SetProjection(bson.M{"sections": 0})
+	}
 	if limit > 0 {
 		skip := int64((page - 1) * limit)
 		opts.SetSkip(skip)
@@ -279,8 +282,6 @@ func (r *courseRepository) Update(ctx context.Context, course *entity.Course) er
 			"prerequisite": model.Prerequisite,
 			"semester":     model.Semester,
 			"year":         model.Year,
-			"program":      model.Program,
-			"campus":       model.Campus,
 			"sections":     model.Sections,
 			"updated_at":   model.UpdatedAt,
 		},

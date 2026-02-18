@@ -91,9 +91,7 @@ type FetchByCodeResponse struct {
 	Prerequisite  string                 `protobuf:"bytes,6,opt,name=prerequisite,proto3" json:"prerequisite,omitempty"`
 	Semester      int32                  `protobuf:"varint,7,opt,name=semester,proto3" json:"semester,omitempty"`
 	Year          int32                  `protobuf:"varint,8,opt,name=year,proto3" json:"year,omitempty"`
-	Program       string                 `protobuf:"bytes,9,opt,name=program,proto3" json:"program,omitempty"`
-	Sections      []*Section             `protobuf:"bytes,10,rep,name=sections,proto3" json:"sections,omitempty"`
-	Campus        string                 `protobuf:"bytes,11,opt,name=campus,proto3" json:"campus,omitempty"` // e.g. "ขอนแก่น", "หนองคาย"
+	Sections      []*Section             `protobuf:"bytes,9,rep,name=sections,proto3" json:"sections,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -184,25 +182,11 @@ func (x *FetchByCodeResponse) GetYear() int32 {
 	return 0
 }
 
-func (x *FetchByCodeResponse) GetProgram() string {
-	if x != nil {
-		return x.Program
-	}
-	return ""
-}
-
 func (x *FetchByCodeResponse) GetSections() []*Section {
 	if x != nil {
 		return x.Sections
 	}
 	return nil
-}
-
-func (x *FetchByCodeResponse) GetCampus() string {
-	if x != nil {
-		return x.Campus
-	}
-	return ""
 }
 
 type Section struct {
@@ -214,7 +198,9 @@ type Section struct {
 	ExamDate      string                 `protobuf:"bytes,5,opt,name=exam_date,json=examDate,proto3" json:"exam_date,omitempty"`          // Thai format: "31 มี.ค. 2569 เวลา 13:00 - 16:00"
 	MidtermDate   string                 `protobuf:"bytes,6,opt,name=midterm_date,json=midtermDate,proto3" json:"midterm_date,omitempty"` // สอบกลางภาค
 	Note          string                 `protobuf:"bytes,7,opt,name=note,proto3" json:"note,omitempty"`                                  // หมายเหตุ e.g. "ผู้สอบไม่ผ่าน", "Closed"
-	ReservedFor   string                 `protobuf:"bytes,8,opt,name=reserved_for,json=reservedFor,proto3" json:"reserved_for,omitempty"` // สำรองสำหรับ e.g. "ผู้ที่สอบไม่ผ่าน50-49-1"
+	ReservedFor   []string               `protobuf:"bytes,8,rep,name=reserved_for,json=reservedFor,proto3" json:"reserved_for,omitempty"` // สำรองสำหรับ e.g. ["ผู้ที่สอบไม่ผ่าน 50-49-1"]
+	Campus        string                 `protobuf:"bytes,9,opt,name=campus,proto3" json:"campus,omitempty"`                              // e.g. "ขอนแก่น", "หนองคาย"
+	Program       string                 `protobuf:"bytes,10,opt,name=program,proto3" json:"program,omitempty"`                           // e.g. "ปริญญาตรี ภาคปกติ"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -298,9 +284,23 @@ func (x *Section) GetNote() string {
 	return ""
 }
 
-func (x *Section) GetReservedFor() string {
+func (x *Section) GetReservedFor() []string {
 	if x != nil {
 		return x.ReservedFor
+	}
+	return nil
+}
+
+func (x *Section) GetCampus() string {
+	if x != nil {
+		return x.Campus
+	}
+	return ""
+}
+
+func (x *Section) GetProgram() string {
+	if x != nil {
+		return x.Program
 	}
 	return ""
 }
@@ -381,7 +381,7 @@ const file_course_service_proto_rawDesc = "" +
 	"\x12FetchByCodeRequest\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x1a\n" +
 	"\bacadyear\x18\x02 \x01(\x05R\bacadyear\x12\x1a\n" +
-	"\bsemester\x18\x03 \x01(\x05R\bsemester\"\xc4\x02\n" +
+	"\bsemester\x18\x03 \x01(\x05R\bsemester\"\x92\x02\n" +
 	"\x13FetchByCodeResponse\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x17\n" +
 	"\aname_en\x18\x02 \x01(\tR\x06nameEn\x12\x17\n" +
@@ -390,11 +390,8 @@ const file_course_service_proto_rawDesc = "" +
 	"\acredits\x18\x05 \x01(\tR\acredits\x12\"\n" +
 	"\fprerequisite\x18\x06 \x01(\tR\fprerequisite\x12\x1a\n" +
 	"\bsemester\x18\a \x01(\x05R\bsemester\x12\x12\n" +
-	"\x04year\x18\b \x01(\x05R\x04year\x12\x18\n" +
-	"\aprogram\x18\t \x01(\tR\aprogram\x12-\n" +
-	"\bsections\x18\n" +
-	" \x03(\v2\x11.coursepb.SectionR\bsections\x12\x16\n" +
-	"\x06campus\x18\v \x01(\tR\x06campus\"\x80\x02\n" +
+	"\x04year\x18\b \x01(\x05R\x04year\x12-\n" +
+	"\bsections\x18\t \x03(\v2\x11.coursepb.SectionR\bsections\"\xb2\x02\n" +
 	"\aSection\x12\x16\n" +
 	"\x06number\x18\x01 \x01(\tR\x06number\x120\n" +
 	"\tschedules\x18\x02 \x03(\v2\x12.coursepb.ScheduleR\tschedules\x12\x14\n" +
@@ -405,7 +402,10 @@ const file_course_service_proto_rawDesc = "" +
 	"\texam_date\x18\x05 \x01(\tR\bexamDate\x12!\n" +
 	"\fmidterm_date\x18\x06 \x01(\tR\vmidtermDate\x12\x12\n" +
 	"\x04note\x18\a \x01(\tR\x04note\x12!\n" +
-	"\freserved_for\x18\b \x01(\tR\vreservedFor\"X\n" +
+	"\freserved_for\x18\b \x03(\tR\vreservedFor\x12\x16\n" +
+	"\x06campus\x18\t \x01(\tR\x06campus\x12\x18\n" +
+	"\aprogram\x18\n" +
+	" \x01(\tR\aprogram\"X\n" +
 	"\bSchedule\x12\x10\n" +
 	"\x03day\x18\x01 \x01(\tR\x03day\x12\x12\n" +
 	"\x04time\x18\x02 \x01(\tR\x04time\x12\x12\n" +

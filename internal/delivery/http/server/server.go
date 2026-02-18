@@ -17,6 +17,7 @@ import (
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/infrastructure/mongodb"
 	mongoRepo "github.com/CPNext-hub/calendar-reg-main-api/internal/infrastructure/repository/mongodb"
 	"github.com/CPNext-hub/calendar-reg-main-api/pkg/queue"
+	"github.com/CPNext-hub/calendar-reg-main-api/pkg/scheduler"
 	"github.com/gofiber/fiber/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -26,13 +27,15 @@ import (
 func Start(cfg *config.Config) {
 	ctx := context.Background()
 
+	// ========== Infrastructure ==========
+
 	// ---------- MongoDB ----------
 	mongo, err := mongodb.Connect(ctx, cfg.MongoHost, cfg.MongoDBName, cfg.MongoUser, cfg.MongoPassword)
 	if err != nil {
 		log.Fatalf("Failed to connect to MongoDB: %v", err)
 	}
 
-	// ---------- gRPC connection to external course API ----------
+	// ---------- gRPC ----------
 	grpcConn, err := grpc.NewClient(cfg.CourseGRPCAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
@@ -41,49 +44,72 @@ func Start(cfg *config.Config) {
 	}
 	log.Printf("gRPC client connected to %s", cfg.CourseGRPCAddr)
 
-	// ---------- Fiber ----------
-	app := fiber.New(fiber.Config{
-		AppName: cfg.AppName,
-	})
-
-	// middlewares
-	middleware.SetupMiddlewares(app)
-
 	// ---------- Background Queue ----------
 	refreshQueue := queue.New(100, 5)
 
-	// usecases
+	// ========== Fiber ==========
+
+	app := fiber.New(fiber.Config{
+		AppName: cfg.AppName,
+	})
+	middleware.SetupMiddlewares(app)
+	api := app.Group("/api/v1")
+
+	// ========== Module: Health & Version ==========
+
 	healthUC := usecase.NewHealthUsecase()
 	versionUC := usecase.NewVersionUsecase(cfg.AppName, cfg.AppVersion, cfg.AppEnv)
+	healthH := handler.NewHealthHandler(healthUC)
+	versionH := handler.NewVersionHandler(versionUC)
+	router.RegisterHealthRoutes(api, healthH, versionH)
 
-	// repositories & external APIs
-	courseRepo := mongoRepo.NewCourseRepository(mongo.Database())
-	courseExtAPI := externalapi.NewCourseExternalAPI(grpcConn)
-	courseUC := usecase.NewCourseUsecase(courseRepo, courseExtAPI, refreshQueue)
+	// ========== Module: Auth ==========
 
 	userRepo := mongoRepo.NewUserRepository(mongo.Database())
 	authUC := usecase.NewAuthUsecase(userRepo, cfg.JWTSecret)
+	authH := handler.NewAuthHandler(authUC)
+	router.RegisterAuthRoutes(api, authH, cfg.JWTSecret)
 
-	// Start background refresh worker
-	refreshQueue.Start(courseUC.ProcessRefreshJob)
-
-	// ---------- Seed superadmin ----------
 	authUC.SeedSuperAdmin(ctx, cfg.SuperAdminUser, cfg.SuperAdminPass)
 
-	// handlers
-	h := &router.Handlers{
-		Health:    handler.NewHealthHandler(healthUC),
-		Version:   handler.NewVersionHandler(versionUC),
-		MongoTest: handler.NewMongoTestHandler(mongo),
-		Course:    handler.NewCourseHandler(courseUC),
-		Auth:      handler.NewAuthHandler(authUC),
-		Queue:     handler.NewQueueHandler(refreshQueue),
+	// ========== Module: Course ==========
+
+	courseRepo := mongoRepo.NewCourseRepository(mongo.Database())
+	courseExtAPI := externalapi.NewCourseExternalAPI(grpcConn)
+	courseUC := usecase.NewCourseUsecase(courseRepo, courseExtAPI, refreshQueue)
+	courseH := handler.NewCourseHandler(courseUC)
+	queueH := handler.NewQueueHandler(refreshQueue)
+	router.RegisterCourseRoutes(api, courseH, queueH, cfg.JWTSecret)
+
+	refreshQueue.Start(courseUC.ProcessRefreshJob)
+
+	// ========== Module: CronJob ==========
+
+	cronJobRepo := mongoRepo.NewCronJobRepository(mongo.Database())
+	cronScheduler := scheduler.New(refreshQueue)
+	cronJobUC := usecase.NewCronJobUsecase(cronJobRepo, cronScheduler)
+	cronJobH := handler.NewCronJobHandler(cronJobUC)
+	router.RegisterCronJobRoutes(api, cronJobH, cfg.JWTSecret)
+
+	enabledJobs, err := cronJobRepo.GetEnabled(ctx)
+	if err != nil {
+		log.Printf("Failed to load cron jobs: %v", err)
+	} else {
+		cronScheduler.LoadJobs(enabledJobs)
 	}
+	cronScheduler.Start()
 
-	// routes
-	router.SetupRoutes(app, h, cfg.JWTSecret)
+	// ========== Module: Test (MongoDB) ==========
 
-	// ---------- Graceful Shutdown ----------
+	mongoTestH := handler.NewMongoTestHandler(mongo)
+	router.RegisterTestRoutes(api, mongoTestH)
+
+	// ========== Global Routes (Swagger) ==========
+
+	router.SetupRoutes(app)
+
+	// ========== Graceful Shutdown ==========
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
@@ -98,6 +124,9 @@ func Start(cfg *config.Config) {
 	// wait for interrupt signal
 	sig := <-quit
 	log.Printf("Received signal %s, shutting down...", sig)
+
+	// stop cron scheduler
+	cronScheduler.Stop()
 
 	// stop background worker (drain remaining jobs)
 	refreshQueue.Stop()

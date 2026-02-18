@@ -49,7 +49,7 @@ func (u *courseUsecase) GetAllCourses(ctx context.Context) ([]*entity.Course, er
 }
 
 func (u *courseUsecase) GetCoursesPaginated(ctx context.Context, pq pagination.PaginationQuery) (*pagination.PaginatedResult[*entity.Course], error) {
-	items, total, err := u.repo.GetPaginated(ctx, pq.Page, pq.Limit)
+	items, total, err := u.repo.GetPaginated(ctx, pq.Page, pq.Limit, false)
 	if err != nil {
 		return nil, err
 	}

@@ -46,7 +46,7 @@ func (m *mockCourseRepo) GetAll(_ context.Context) ([]*entity.Course, error) {
 	return m.allCourses, nil
 }
 
-func (m *mockCourseRepo) GetPaginated(_ context.Context, page, limit int) ([]*entity.Course, int64, error) {
+func (m *mockCourseRepo) GetPaginated(_ context.Context, page, limit int, includeSections bool) ([]*entity.Course, int64, error) {
 	if m.pagErr != nil {
 		return nil, 0, m.pagErr
 	}

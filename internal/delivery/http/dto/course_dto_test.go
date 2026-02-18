@@ -22,7 +22,8 @@ func TestToEntity(t *testing.T) {
 						Type: "Lecture",
 					},
 				},
-				ExamDate: "31 มี.ค. 2569 เวลา 13:00 - 16:00",
+				ExamDate:    "31 มี.ค. 2569 เวลา 13:00 - 16:00",
+				ReservedFor: []string{"Students who failed"},
 			},
 		},
 	}
@@ -57,6 +58,7 @@ func TestToEntity(t *testing.T) {
 	assert.Equal(t, expectedExamStart.Hour(), section.ExamStart.Hour())
 
 	assert.Equal(t, expectedExamEnd.Hour(), section.ExamEnd.Hour())
+	assert.Equal(t, []string{"Students who failed"}, section.ReservedFor)
 }
 
 func TestToCourseResponse(t *testing.T) {
@@ -106,6 +108,26 @@ func TestToCourseResponse(t *testing.T) {
 	assert.Equal(t, "Wednesday", schedule.Day)
 	assert.Equal(t, "09:00", schedule.StartTime)
 	assert.Equal(t, "12:00", schedule.EndTime)
+}
+
+func TestToCourseSummaryResponse(t *testing.T) {
+	updatedAt := time.Date(2026, time.February, 17, 14, 0, 0, 0, time.Local)
+	entityCourse := &entity.Course{
+		Code: "CP353004",
+		BaseEntity: entity.BaseEntity{
+			UpdatedAt: updatedAt,
+		},
+		Sections: []entity.Section{
+			{Number: "01"}, // Should be ignored
+		},
+	}
+
+	response := ToCourseSummaryResponse(entityCourse)
+
+	assert.NotNil(t, response)
+	assert.Equal(t, "CP353004", response.Code)
+	assert.Equal(t, updatedAt.Format(time.RFC3339), response.UpdatedAt)
+	// response.Sections does not exist, so we can't check it, which is the point.
 }
 
 func TestParseThaiExamDate_InvalidFormat(t *testing.T) {

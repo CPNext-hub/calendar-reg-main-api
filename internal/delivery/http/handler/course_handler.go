@@ -80,7 +80,7 @@ func (h *CourseHandler) GetCourses(c *fiber.Ctx) error {
 	}
 
 	return response.OK(adapter.NewFiberResponder(c),
-		dto.ToCourseResponses(result.Items),
+		dto.ToCourseSummaryResponses(result.Items),
 		result.GetMeta(),
 	)
 }

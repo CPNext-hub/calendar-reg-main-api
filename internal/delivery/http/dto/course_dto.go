@@ -22,8 +22,6 @@ type CreateCourseRequest struct {
 	Prerequisite string           `json:"prerequisite,omitempty"`
 	Semester     int              `json:"semester"`
 	Year         int              `json:"year"`
-	Program      string           `json:"program"`
-	Campus       string           `json:"campus,omitempty"`
 	Sections     []SectionRequest `json:"sections"`
 }
 
@@ -36,7 +34,9 @@ type SectionRequest struct {
 	ExamDate    string            `json:"exam_date,omitempty"`
 	MidtermDate string            `json:"midterm_date,omitempty"`
 	Note        string            `json:"note,omitempty"`
-	ReservedFor string            `json:"reserved_for,omitempty"`
+	ReservedFor []string          `json:"reserved_for,omitempty"`
+	Campus      string            `json:"campus,omitempty"`
+	Program     string            `json:"program,omitempty"`
 }
 
 // ScheduleRequest represents a schedule slot in a request.
@@ -111,6 +111,8 @@ func (r *CreateCourseRequest) ToEntity() *entity.Course {
 			MidtermEnd:   midtermEnd,
 			Note:         s.Note,
 			ReservedFor:  s.ReservedFor,
+			Campus:       s.Campus,
+			Program:      s.Program,
 		}
 	}
 
@@ -123,8 +125,6 @@ func (r *CreateCourseRequest) ToEntity() *entity.Course {
 		Prerequisite: r.Prerequisite,
 		Semester:     r.Semester,
 		Year:         r.Year,
-		Program:      r.Program,
-		Campus:       r.Campus,
 		Sections:     sections,
 	}
 }
@@ -142,8 +142,6 @@ type CourseResponse struct {
 	Prerequisite string            `json:"prerequisite,omitempty"`
 	Semester     int               `json:"semester"`
 	Year         int               `json:"year"`
-	Program      string            `json:"program"`
-	Campus       string            `json:"campus,omitempty"`
 	UpdatedAt    string            `json:"updated_at"`
 	Sections     []SectionResponse `json:"sections"`
 }
@@ -159,7 +157,9 @@ type SectionResponse struct {
 	MidtermStart string             `json:"midterm_start,omitempty"`
 	MidtermEnd   string             `json:"midterm_end,omitempty"`
 	Note         string             `json:"note,omitempty"`
-	ReservedFor  string             `json:"reserved_for,omitempty"`
+	ReservedFor  []string           `json:"reserved_for,omitempty"`
+	Campus       string             `json:"campus,omitempty"`
+	Program      string             `json:"program,omitempty"`
 }
 
 // ScheduleResponse represents a schedule slot in the response.
@@ -217,6 +217,8 @@ func ToCourseResponse(c *entity.Course) *CourseResponse {
 			MidtermEnd:   midtermEndStr,
 			Note:         s.Note,
 			ReservedFor:  s.ReservedFor,
+			Campus:       s.Campus,
+			Program:      s.Program,
 		}
 	}
 
@@ -230,8 +232,6 @@ func ToCourseResponse(c *entity.Course) *CourseResponse {
 		Prerequisite: c.Prerequisite,
 		Semester:     c.Semester,
 		Year:         c.Year,
-		Program:      c.Program,
-		Campus:       c.Campus,
 		Sections:     sections,
 		UpdatedAt:    c.UpdatedAt.Format(time.RFC3339),
 	}
@@ -242,6 +242,48 @@ func ToCourseResponses(courses []*entity.Course) []*CourseResponse {
 	responses := make([]*CourseResponse, len(courses))
 	for i, c := range courses {
 		responses[i] = ToCourseResponse(c)
+	}
+	return responses
+}
+
+// CourseSummaryResponse represents a course summary without sections.
+type CourseSummaryResponse struct {
+	ID           string `json:"id"`
+	Code         string `json:"code"`
+	NameEN       string `json:"name_en"`
+	NameTH       string `json:"name_th"`
+	Faculty      string `json:"faculty"`
+	Credits      string `json:"credits"`
+	Prerequisite string `json:"prerequisite,omitempty"`
+	Semester     int    `json:"semester"`
+	Year         int    `json:"year"`
+	UpdatedAt    string `json:"updated_at"`
+}
+
+// ToCourseSummaryResponse converts a Course entity to a CourseSummaryResponse DTO.
+func ToCourseSummaryResponse(c *entity.Course) *CourseSummaryResponse {
+	if c == nil {
+		return nil
+	}
+	return &CourseSummaryResponse{
+		ID:           c.ID,
+		Code:         c.Code,
+		NameEN:       c.NameEN,
+		NameTH:       c.NameTH,
+		Faculty:      c.Faculty,
+		Credits:      c.Credits,
+		Prerequisite: c.Prerequisite,
+		Semester:     c.Semester,
+		Year:         c.Year,
+		UpdatedAt:    c.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+// ToCourseSummaryResponses converts a slice of Course entities to CourseSummaryResponse DTOs.
+func ToCourseSummaryResponses(courses []*entity.Course) []*CourseSummaryResponse {
+	responses := make([]*CourseSummaryResponse, len(courses))
+	for i, c := range courses {
+		responses[i] = ToCourseSummaryResponse(c)
 	}
 	return responses
 }

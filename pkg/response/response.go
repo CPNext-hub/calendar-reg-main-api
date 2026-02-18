@@ -31,20 +31,23 @@ type ErrorBody struct {
 
 // ---------- success helpers ----------
 
-// OK returns a 200 OK response with data.
-// It always wraps the data in a "data" key: {success:true, data:{data:..., [metadata:...]}}.
-func OK(w port.Responder, data interface{}, meta ...interface{}) error {
-	payloadData := map[string]interface{}{
-		"data": data,
-	}
+// dataPayload ensures JSON field ordering: metadata first, then data.
+type dataPayload struct {
+	Metadata interface{} `json:"metadata,omitempty"`
+	Data     interface{} `json:"data"`
+}
 
+// OK returns a 200 OK response with data.
+// It always wraps the data in a "data" key: {success:true, data:{metadata:..., data:...}}.
+func OK(w port.Responder, data interface{}, meta ...interface{}) error {
+	payload := dataPayload{Data: data}
 	if len(meta) > 0 && meta[0] != nil {
-		payloadData["metadata"] = meta[0]
+		payload.Metadata = meta[0]
 	}
 
 	return w.Status(StatusOK).JSON(Body{
 		Success: true,
-		Data:    payloadData,
+		Data:    payload,
 	})
 }
 

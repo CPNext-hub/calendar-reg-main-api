@@ -16,8 +16,6 @@ type Course struct {
 	Prerequisite string    // e.g., "CP353002 หรือ SC313002"
 	Semester     int       // e.g., 2
 	Year         int       // e.g., 2568
-	Program      string    // e.g., "ปริญญาตรี ภาคปกติ"
-	Campus       string    // e.g., "ขอนแก่น", "หนองคาย"
 	Sections     []Section // multiple sections per course
 }
 
@@ -37,7 +35,9 @@ type Section struct {
 	MidtermStart time.Time  // สอบกลางภาค start
 	MidtermEnd   time.Time  // สอบกลางภาค end
 	Note         string     // หมายเหตุ e.g., "ผู้สอบไม่ผ่าน", "Closed"
-	ReservedFor  string     // สำรองสำหรับ e.g., "ผู้ที่สอบไม่ผ่าน50-49-1"
+	ReservedFor  []string   // สำรองสำหรับ e.g., ["ผู้ที่สอบไม่ผ่าน 50-49-1"]
+	Campus       string     // e.g., "ขอนแก่น", "หนองคาย"
+	Program      string     // e.g., "ปริญญาตรี ภาคปกติ"
 }
 
 // Schedule represents a single class meeting (day + time + room).
