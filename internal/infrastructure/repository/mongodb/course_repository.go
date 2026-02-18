@@ -9,13 +9,14 @@ import (
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/repository"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 const courseCollection = "courses"
 
 // courseModel is the MongoDB-specific representation of a course (bson tags live here).
 type courseModel struct {
-	baseModel    `bson:",inline"`
+	BaseModel    `bson:",inline"`
 	Code         string         `bson:"code"`
 	NameEN       string         `bson:"name_en"`
 	NameTH       string         `bson:"name_th"`
@@ -24,23 +25,40 @@ type courseModel struct {
 	Prerequisite string         `bson:"prerequisite,omitempty"`
 	Semester     int            `bson:"semester"`
 	Year         int            `bson:"year"`
-	Program      string         `bson:"program"`
 	Sections     []sectionModel `bson:"sections"`
 }
 
 type sectionModel struct {
-	Number     string          `bson:"number"`
-	Schedules  []scheduleModel `bson:"schedules"`
-	Seats      int             `bson:"seats"`
-	Instructor string          `bson:"instructor"`
-	ExamDate   string          `bson:"exam_date,omitempty"`
+	Number       string          `bson:"number"`
+	Schedules    []scheduleModel `bson:"schedules"`
+	Seats        int             `bson:"seats"`
+	Instructor   string          `bson:"instructor"`
+	ExamStart    time.Time       `bson:"exam_start,omitempty"`
+	ExamEnd      time.Time       `bson:"exam_end,omitempty"`
+	MidtermStart time.Time       `bson:"midterm_start,omitempty"`
+	MidtermEnd   time.Time       `bson:"midterm_end,omitempty"`
+	Note         string          `bson:"note,omitempty"`
+	ReservedFor  []string        `bson:"reserved_for,omitempty"`
+	Campus       string          `bson:"campus,omitempty"`
+	Program      string          `bson:"program,omitempty"`
 }
 
 type scheduleModel struct {
-	Day  string `bson:"day"`
-	Time string `bson:"time"`
-	Room string `bson:"room"`
-	Type string `bson:"type"`
+	Day       string    `bson:"day"`
+	StartTime time.Time `bson:"start_time"`
+	EndTime   time.Time `bson:"end_time"`
+	Room      string    `bson:"room"`
+	Type      string    `bson:"type"`
+}
+
+// compositeFilter builds the composite key filter for lookups.
+func compositeFilter(code string, year, semester int) bson.M {
+	return bson.M{
+		"code":       code,
+		"year":       year,
+		"semester":   semester,
+		"deleted_at": bson.M{"$exists": false},
+	}
 }
 
 // toEntity converts a MongoDB model to a domain entity.
@@ -50,18 +68,26 @@ func (m *courseModel) toEntity() *entity.Course {
 		schedules := make([]entity.Schedule, len(s.Schedules))
 		for j, sc := range s.Schedules {
 			schedules[j] = entity.Schedule{
-				Day:  sc.Day,
-				Time: sc.Time,
-				Room: sc.Room,
-				Type: sc.Type,
+				Day:       sc.Day,
+				StartTime: sc.StartTime,
+				EndTime:   sc.EndTime,
+				Room:      sc.Room,
+				Type:      sc.Type,
 			}
 		}
 		sections[i] = entity.Section{
-			Number:     s.Number,
-			Schedules:  schedules,
-			Seats:      s.Seats,
-			Instructor: s.Instructor,
-			ExamDate:   s.ExamDate,
+			Number:       s.Number,
+			Schedules:    schedules,
+			Seats:        s.Seats,
+			Instructor:   s.Instructor,
+			ExamStart:    s.ExamStart,
+			ExamEnd:      s.ExamEnd,
+			MidtermStart: s.MidtermStart,
+			MidtermEnd:   s.MidtermEnd,
+			Note:         s.Note,
+			ReservedFor:  s.ReservedFor,
+			Campus:       s.Campus,
+			Program:      s.Program,
 		}
 	}
 
@@ -85,7 +111,6 @@ func (m *courseModel) toEntity() *entity.Course {
 		Prerequisite: m.Prerequisite,
 		Semester:     m.Semester,
 		Year:         m.Year,
-		Program:      m.Program,
 		Sections:     sections,
 	}
 }
@@ -97,18 +122,26 @@ func toCourseModel(e *entity.Course) *courseModel {
 		schedules := make([]scheduleModel, len(s.Schedules))
 		for j, sc := range s.Schedules {
 			schedules[j] = scheduleModel{
-				Day:  sc.Day,
-				Time: sc.Time,
-				Room: sc.Room,
-				Type: sc.Type,
+				Day:       sc.Day,
+				StartTime: sc.StartTime,
+				EndTime:   sc.EndTime,
+				Room:      sc.Room,
+				Type:      sc.Type,
 			}
 		}
 		sections[i] = sectionModel{
-			Number:     s.Number,
-			Schedules:  schedules,
-			Seats:      s.Seats,
-			Instructor: s.Instructor,
-			ExamDate:   s.ExamDate,
+			Number:       s.Number,
+			Schedules:    schedules,
+			Seats:        s.Seats,
+			Instructor:   s.Instructor,
+			ExamStart:    s.ExamStart,
+			ExamEnd:      s.ExamEnd,
+			MidtermStart: s.MidtermStart,
+			MidtermEnd:   s.MidtermEnd,
+			Note:         s.Note,
+			ReservedFor:  s.ReservedFor,
+			Campus:       s.Campus,
+			Program:      s.Program,
 		}
 	}
 
@@ -121,7 +154,6 @@ func toCourseModel(e *entity.Course) *courseModel {
 		Prerequisite: e.Prerequisite,
 		Semester:     e.Semester,
 		Year:         e.Year,
-		Program:      e.Program,
 		Sections:     sections,
 	}
 	m.CreatedAt = e.CreatedAt
@@ -184,9 +216,48 @@ func (r *courseRepository) GetAll(ctx context.Context) ([]*entity.Course, error)
 	return courses, nil
 }
 
-func (r *courseRepository) GetByCode(ctx context.Context, code string) (*entity.Course, error) {
+func (r *courseRepository) GetPaginated(ctx context.Context, page, limit int, includeSections bool) ([]*entity.Course, int64, error) {
+	col := r.db.Collection(courseCollection)
+
+	// Count total matching documents.
+	total, err := col.CountDocuments(ctx, notDeleted)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Build find options.
+	opts := options.Find()
+	if !includeSections {
+		opts.SetProjection(bson.M{"sections": 0})
+	}
+	if limit > 0 {
+		skip := int64((page - 1) * limit)
+		opts.SetSkip(skip)
+		opts.SetLimit(int64(limit))
+	}
+	// limit == 0 → no skip/limit → return all
+
+	cursor, err := col.Find(ctx, notDeleted, opts)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var models []*courseModel
+	if err := cursor.All(ctx, &models); err != nil {
+		return nil, 0, err
+	}
+
+	courses := make([]*entity.Course, len(models))
+	for i, m := range models {
+		courses[i] = m.toEntity()
+	}
+	return courses, total, nil
+}
+
+func (r *courseRepository) GetByKey(ctx context.Context, code string, year, semester int) (*entity.Course, error) {
 	var model courseModel
-	filter := bson.M{"code": code, "deleted_at": bson.M{"$exists": false}}
+	filter := compositeFilter(code, year, semester)
 	err := r.db.Collection(courseCollection).FindOne(ctx, filter).Decode(&model)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
@@ -197,9 +268,38 @@ func (r *courseRepository) GetByCode(ctx context.Context, code string) (*entity.
 	return model.toEntity(), nil
 }
 
-func (r *courseRepository) SoftDelete(ctx context.Context, code string) error {
+func (r *courseRepository) Update(ctx context.Context, course *entity.Course) error {
+	course.UpdatedAt = time.Now()
+	model := toCourseModel(course)
+
+	filter := compositeFilter(course.Code, course.Year, course.Semester)
+	update := bson.M{
+		"$set": bson.M{
+			"name_en":      model.NameEN,
+			"name_th":      model.NameTH,
+			"faculty":      model.Faculty,
+			"credits":      model.Credits,
+			"prerequisite": model.Prerequisite,
+			"semester":     model.Semester,
+			"year":         model.Year,
+			"sections":     model.Sections,
+			"updated_at":   model.UpdatedAt,
+		},
+	}
+
+	result, err := r.db.Collection(courseCollection).UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount == 0 {
+		return errors.New("course not found")
+	}
+	return nil
+}
+
+func (r *courseRepository) SoftDelete(ctx context.Context, code string, year, semester int) error {
 	now := time.Now()
-	filter := bson.M{"code": code, "deleted_at": bson.M{"$exists": false}}
+	filter := compositeFilter(code, year, semester)
 	update := bson.M{"$set": bson.M{"deleted_at": now, "updated_at": now}}
 
 	result, err := r.db.Collection(courseCollection).UpdateOne(ctx, filter, update)

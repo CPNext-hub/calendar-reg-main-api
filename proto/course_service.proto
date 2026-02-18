@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package coursepb;
+
+option go_package = "github.com/CPNext-hub/calendar-reg-main-api/proto/gen/coursepb";
+
+service CourseService {
+  // FetchByCode returns course data for the given course code.
+  rpc FetchByCode(FetchByCodeRequest) returns (FetchByCodeResponse);
+}
+
+message FetchByCodeRequest {
+  string code = 1;
+  int32 acadyear = 2; // e.g. 2568
+  int32 semester = 3; // e.g. 1, 2, 3
+}
+
+message FetchByCodeResponse {
+  string code = 1;
+  string name_en = 2;
+  string name_th = 3;
+  string faculty = 4;
+  string credits = 5;
+  string prerequisite = 6;
+  int32 semester = 7;
+  int32 year = 8;
+  repeated Section sections = 9;
+}
+
+message Section {
+  string number = 1;
+  repeated Schedule schedules = 2;
+  int32 seats = 3;
+  string instructor = 4;
+  string exam_date = 5; // Thai format: "31 มี.ค. 2569 เวลา 13:00 - 16:00"
+  string midterm_date = 6; // สอบกลางภาค
+  string note = 7; // หมายเหตุ e.g. "ผู้สอบไม่ผ่าน", "Closed"
+  repeated string reserved_for = 8; // สำรองสำหรับ e.g. ["ผู้ที่สอบไม่ผ่าน 50-49-1"]
+  string campus = 9; // e.g. "ขอนแก่น", "หนองคาย"
+  string program = 10; // e.g. "ปริญญาตรี ภาคปกติ"
+}
+
+message Schedule {
+  string day = 1;
+  string time = 2; // "13:00-15:00"
+  string room = 3;
+  string type = 4;
+}

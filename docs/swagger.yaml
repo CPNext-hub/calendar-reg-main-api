@@ -1,10 +1,78 @@
 basePath: /api/v1
 definitions:
+  dto.CourseResponse:
+    properties:
+      code:
+        type: string
+      credits:
+        type: string
+      faculty:
+        type: string
+      id:
+        type: string
+      name_en:
+        type: string
+      name_th:
+        type: string
+      prerequisite:
+        type: string
+      program:
+        type: string
+      sections:
+        items:
+          $ref: '#/definitions/dto.SectionResponse'
+        type: array
+      semester:
+        type: integer
+      updated_at:
+        type: string
+      year:
+        type: integer
+    type: object
+  dto.CreateCourseRequest:
+    properties:
+      code:
+        type: string
+      credits:
+        type: string
+      faculty:
+        type: string
+      name_en:
+        type: string
+      name_th:
+        type: string
+      prerequisite:
+        type: string
+      program:
+        type: string
+      sections:
+        items:
+          $ref: '#/definitions/dto.SectionRequest'
+        type: array
+      semester:
+        type: integer
+      year:
+        type: integer
+    type: object
   dto.HealthResponse:
     properties:
       status:
         type: string
       timestamp:
+        type: string
+    type: object
+  dto.LoginRequest:
+    properties:
+      password:
+        example: password123
+        type: string
+      username:
+        example: admin1
+        type: string
+    type: object
+  dto.LoginResponse:
+    properties:
+      token:
         type: string
     type: object
   dto.MongoTestResult:
@@ -18,6 +86,83 @@ definitions:
       ping:
         type: string
     type: object
+  dto.RegisterRequest:
+    properties:
+      password:
+        example: password123
+        type: string
+      role:
+        example: admin
+        type: string
+      username:
+        example: admin1
+        type: string
+    type: object
+  dto.RegisterResponse:
+    properties:
+      id:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+  dto.ScheduleRequest:
+    properties:
+      day:
+        type: string
+      room:
+        type: string
+      time:
+        type: string
+      type:
+        type: string
+    type: object
+  dto.ScheduleResponse:
+    properties:
+      day:
+        type: string
+      end_time:
+        type: string
+      room:
+        type: string
+      start_time:
+        type: string
+      type:
+        type: string
+    type: object
+  dto.SectionRequest:
+    properties:
+      exam_date:
+        type: string
+      instructor:
+        type: string
+      number:
+        type: string
+      schedules:
+        items:
+          $ref: '#/definitions/dto.ScheduleRequest'
+        type: array
+      seats:
+        type: integer
+    type: object
+  dto.SectionResponse:
+    properties:
+      exam_end:
+        type: string
+      exam_start:
+        type: string
+      instructor:
+        type: string
+      number:
+        type: string
+      schedules:
+        items:
+          $ref: '#/definitions/dto.ScheduleResponse'
+        type: array
+      seats:
+        type: integer
+    type: object
   dto.VersionResponse:
     properties:
       env:
@@ -27,19 +172,273 @@ definitions:
       version:
         type: string
     type: object
+  queue.QueueStatus:
+    properties:
+      codes:
+        items:
+          type: string
+        type: array
+      processed:
+        type: integer
+      processing:
+        type: integer
+    type: object
 host: localhost:8080
 info:
   contact:
-    email: support@swagger.io
+    email: '[EMAIL_ADDRESS]'
     name: API Support
   description: This is the main API server for the Calendar Reg application.
-  license:
-    name: Apache 2.0
-    url: http://www.apache.org/licenses/LICENSE-2.0.html
-  termsOfService: http://swagger.io/terms/
   title: Calendar Reg Main API
   version: "1.0"
 paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate with username and password to receive a JWT token
+      parameters:
+      - description: Login Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.LoginResponse'
+        "400":
+          description: Bad Request
+          schema: {}
+        "401":
+          description: Unauthorized
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Login
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user with student role (public endpoint)
+      parameters:
+      - description: Register Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.RegisterResponse'
+        "400":
+          description: Bad Request
+          schema: {}
+        "409":
+          description: Conflict
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Register a new student
+      tags:
+      - auth
+  /auth/users:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a paginated list of users. Requires superadmin or admin
+        JWT. Use limit=0 to fetch all.
+      parameters:
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (default 10, 0=all)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "401":
+          description: Unauthorized
+          schema: {}
+        "403":
+          description: Forbidden
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - BearerAuth: []
+      summary: Get users (paginated)
+      tags:
+      - auth
+    post:
+      consumes:
+      - application/json
+      description: Create a new user with any role. Requires superadmin or admin JWT.
+      parameters:
+      - description: Register Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.RegisterResponse'
+        "400":
+          description: Bad Request
+          schema: {}
+        "403":
+          description: Forbidden
+          schema: {}
+        "409":
+          description: Conflict
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - BearerAuth: []
+      summary: Create a user (admin)
+      tags:
+      - auth
+  /courses:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a paginated list of courses. Use limit=0 to fetch all.
+      parameters:
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (default 10, 0=all)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Get courses (paginated)
+      tags:
+      - courses
+    post:
+      consumes:
+      - application/json
+      description: Create a new course with sections and schedules
+      parameters:
+      - description: Course Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateCourseRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.CourseResponse'
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Create a new course
+      tags:
+      - courses
+  /courses/{code}:
+    delete:
+      consumes:
+      - application/json
+      description: Soft delete a course (set deleted_at timestamp)
+      parameters:
+      - description: Course Code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Soft delete course by code
+      tags:
+      - courses
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific course details by its code
+      parameters:
+      - description: Course Code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CourseResponse'
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Get course by code
+      tags:
+      - courses
+  /queue/status:
+    get:
+      description: Returns pending, processed, dropped counts and capacity
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/queue.QueueStatus'
+      summary: Get queue status
+      tags:
+      - queue
   /status:
     get:
       consumes:
