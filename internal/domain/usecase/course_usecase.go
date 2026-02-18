@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/entity"
@@ -58,7 +59,7 @@ func (u *courseUsecase) GetCoursesPaginated(ctx context.Context, pq pagination.P
 }
 
 func (u *courseUsecase) GetCourseByCode(ctx context.Context, code string, acadyear, semester int) (*entity.Course, error) {
-	course, err := u.repo.GetByKey(ctx, code, acadyear, semester)
+	course, err := u.repo.GetByKey(ctx, strings.ToUpper(code), acadyear, semester)
 	if err != nil {
 		return nil, err
 	}
