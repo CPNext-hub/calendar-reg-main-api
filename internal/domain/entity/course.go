@@ -11,7 +11,8 @@ type Course struct {
 	Code         string    // e.g., "CP353004"
 	NameEN       string    // e.g., "Software Engineering"
 	NameTH       string    // e.g., "วิศวกรรมซอฟต์แวร์"
-	Faculty      string    // e.g., "วิทยาลัยการคอมพิวเตอร์, วิทยาการคอมพิวเตอร์"
+	Faculty      string    // e.g., "วิทยาลัยการคอมพิวเตอร์"
+	Department   string    // e.g., "วิทยาการคอมพิวเตอร์"
 	Credits      string    // e.g., "3 (2-2-5)"
 	Prerequisite string    // e.g., "CP353002 หรือ SC313002"
 	Semester     int       // e.g., 2

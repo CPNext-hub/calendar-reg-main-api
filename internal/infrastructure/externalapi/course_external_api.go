@@ -110,6 +110,7 @@ func protoToCourse(resp *pb.FetchByCodeResponse) *entity.Course {
 		NameEN:       resp.NameEn,
 		NameTH:       resp.NameTh,
 		Faculty:      resp.Faculty,
+		Department:   resp.Department,
 		Credits:      resp.Credits,
 		Prerequisite: resp.Prerequisite,
 		Semester:     int(resp.Semester),

@@ -10,7 +10,9 @@ import (
 
 func TestToEntity(t *testing.T) {
 	req := CreateCourseRequest{
-		Code: "CP353004",
+		Code:       "CP353004",
+		Faculty:    "วิทยาลัยการคอมพิวเตอร์",
+		Department: "วิทยาการคอมพิวเตอร์",
 		Sections: []SectionRequest{
 			{
 				Number: "01",
@@ -31,6 +33,8 @@ func TestToEntity(t *testing.T) {
 	entityCourse := req.ToEntity()
 
 	assert.NotNil(t, entityCourse)
+	assert.Equal(t, "วิทยาลัยการคอมพิวเตอร์", entityCourse.Faculty)
+	assert.Equal(t, "วิทยาการคอมพิวเตอร์", entityCourse.Department)
 	assert.Equal(t, 1, len(entityCourse.Sections))
 
 	section := entityCourse.Sections[0]
@@ -72,7 +76,9 @@ func TestToCourseResponse(t *testing.T) {
 	updatedAt := time.Date(2026, time.February, 17, 14, 0, 0, 0, time.Local)
 
 	entityCourse := &entity.Course{
-		Code: "CP353004",
+		Code:       "CP353004",
+		Faculty:    "วิทยาลัยการคอมพิวเตอร์",
+		Department: "วิทยาการคอมพิวเตอร์",
 		BaseEntity: entity.BaseEntity{
 			UpdatedAt: updatedAt,
 		},
@@ -97,6 +103,8 @@ func TestToCourseResponse(t *testing.T) {
 	response := ToCourseResponse(entityCourse)
 
 	assert.NotNil(t, response)
+	assert.Equal(t, "วิทยาลัยการคอมพิวเตอร์", response.Faculty)
+	assert.Equal(t, "วิทยาการคอมพิวเตอร์", response.Department)
 	assert.Equal(t, 1, len(response.Sections))
 	assert.Equal(t, updatedAt.Format(time.RFC3339), response.UpdatedAt)
 
@@ -113,7 +121,9 @@ func TestToCourseResponse(t *testing.T) {
 func TestToCourseSummaryResponse(t *testing.T) {
 	updatedAt := time.Date(2026, time.February, 17, 14, 0, 0, 0, time.Local)
 	entityCourse := &entity.Course{
-		Code: "CP353004",
+		Code:       "CP353004",
+		Faculty:    "วิทยาลัยการคอมพิวเตอร์",
+		Department: "วิทยาการคอมพิวเตอร์",
 		BaseEntity: entity.BaseEntity{
 			UpdatedAt: updatedAt,
 		},
@@ -126,6 +136,8 @@ func TestToCourseSummaryResponse(t *testing.T) {
 
 	assert.NotNil(t, response)
 	assert.Equal(t, "CP353004", response.Code)
+	assert.Equal(t, "วิทยาลัยการคอมพิวเตอร์", response.Faculty)
+	assert.Equal(t, "วิทยาการคอมพิวเตอร์", response.Department)
 	assert.Equal(t, updatedAt.Format(time.RFC3339), response.UpdatedAt)
 	// response.Sections does not exist, so we can't check it, which is the point.
 }

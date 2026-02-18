@@ -92,6 +92,7 @@ type FetchByCodeResponse struct {
 	Semester      int32                  `protobuf:"varint,7,opt,name=semester,proto3" json:"semester,omitempty"`
 	Year          int32                  `protobuf:"varint,8,opt,name=year,proto3" json:"year,omitempty"`
 	Sections      []*Section             `protobuf:"bytes,9,rep,name=sections,proto3" json:"sections,omitempty"`
+	Department    string                 `protobuf:"bytes,10,opt,name=department,proto3" json:"department,omitempty"` // e.g. "วิทยาการคอมพิวเตอร์"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -187,6 +188,13 @@ func (x *FetchByCodeResponse) GetSections() []*Section {
 		return x.Sections
 	}
 	return nil
+}
+
+func (x *FetchByCodeResponse) GetDepartment() string {
+	if x != nil {
+		return x.Department
+	}
+	return ""
 }
 
 type Section struct {
@@ -381,7 +389,7 @@ const file_course_service_proto_rawDesc = "" +
 	"\x12FetchByCodeRequest\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x1a\n" +
 	"\bacadyear\x18\x02 \x01(\x05R\bacadyear\x12\x1a\n" +
-	"\bsemester\x18\x03 \x01(\x05R\bsemester\"\x92\x02\n" +
+	"\bsemester\x18\x03 \x01(\x05R\bsemester\"\xb2\x02\n" +
 	"\x13FetchByCodeResponse\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x17\n" +
 	"\aname_en\x18\x02 \x01(\tR\x06nameEn\x12\x17\n" +
@@ -391,7 +399,11 @@ const file_course_service_proto_rawDesc = "" +
 	"\fprerequisite\x18\x06 \x01(\tR\fprerequisite\x12\x1a\n" +
 	"\bsemester\x18\a \x01(\x05R\bsemester\x12\x12\n" +
 	"\x04year\x18\b \x01(\x05R\x04year\x12-\n" +
-	"\bsections\x18\t \x03(\v2\x11.coursepb.SectionR\bsections\"\xb2\x02\n" +
+	"\bsections\x18\t \x03(\v2\x11.coursepb.SectionR\bsections\x12\x1e\n" +
+	"\n" +
+	"department\x18\n" +
+	" \x01(\tR\n" +
+	"department\"\xb2\x02\n" +
 	"\aSection\x12\x16\n" +
 	"\x06number\x18\x01 \x01(\tR\x06number\x120\n" +
 	"\tschedules\x18\x02 \x03(\v2\x12.coursepb.ScheduleR\tschedules\x12\x14\n" +

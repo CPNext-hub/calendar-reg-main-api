@@ -18,6 +18,7 @@ type CreateCourseRequest struct {
 	NameEN       string           `json:"name_en"`
 	NameTH       string           `json:"name_th"`
 	Faculty      string           `json:"faculty"`
+	Department   string           `json:"department,omitempty"`
 	Credits      string           `json:"credits"`
 	Prerequisite string           `json:"prerequisite,omitempty"`
 	Semester     int              `json:"semester"`
@@ -121,6 +122,7 @@ func (r *CreateCourseRequest) ToEntity() *entity.Course {
 		NameEN:       r.NameEN,
 		NameTH:       r.NameTH,
 		Faculty:      r.Faculty,
+		Department:   r.Department,
 		Credits:      r.Credits,
 		Prerequisite: r.Prerequisite,
 		Semester:     r.Semester,
@@ -138,6 +140,7 @@ type CourseResponse struct {
 	NameEN       string            `json:"name_en"`
 	NameTH       string            `json:"name_th"`
 	Faculty      string            `json:"faculty"`
+	Department   string            `json:"department,omitempty"`
 	Credits      string            `json:"credits"`
 	Prerequisite string            `json:"prerequisite,omitempty"`
 	Semester     int               `json:"semester"`
@@ -228,6 +231,7 @@ func ToCourseResponse(c *entity.Course) *CourseResponse {
 		NameEN:       c.NameEN,
 		NameTH:       c.NameTH,
 		Faculty:      c.Faculty,
+		Department:   c.Department,
 		Credits:      c.Credits,
 		Prerequisite: c.Prerequisite,
 		Semester:     c.Semester,
@@ -253,6 +257,7 @@ type CourseSummaryResponse struct {
 	NameEN       string `json:"name_en"`
 	NameTH       string `json:"name_th"`
 	Faculty      string `json:"faculty"`
+	Department   string `json:"department,omitempty"`
 	Credits      string `json:"credits"`
 	Prerequisite string `json:"prerequisite,omitempty"`
 	Semester     int    `json:"semester"`
@@ -271,6 +276,7 @@ func ToCourseSummaryResponse(c *entity.Course) *CourseSummaryResponse {
 		NameEN:       c.NameEN,
 		NameTH:       c.NameTH,
 		Faculty:      c.Faculty,
+		Department:   c.Department,
 		Credits:      c.Credits,
 		Prerequisite: c.Prerequisite,
 		Semester:     c.Semester,

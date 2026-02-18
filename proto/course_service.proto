@@ -25,6 +25,7 @@ message FetchByCodeResponse {
   int32 semester = 7;
   int32 year = 8;
   repeated Section sections = 9;
+  string department = 10; // e.g. "วิทยาการคอมพิวเตอร์"
 }
 
 message Section {

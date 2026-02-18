@@ -21,6 +21,7 @@ type courseModel struct {
 	NameEN       string         `bson:"name_en"`
 	NameTH       string         `bson:"name_th"`
 	Faculty      string         `bson:"faculty"`
+	Department   string         `bson:"department,omitempty"`
 	Credits      string         `bson:"credits"`
 	Prerequisite string         `bson:"prerequisite,omitempty"`
 	Semester     int            `bson:"semester"`
@@ -107,6 +108,7 @@ func (m *courseModel) toEntity() *entity.Course {
 		NameEN:       m.NameEN,
 		NameTH:       m.NameTH,
 		Faculty:      m.Faculty,
+		Department:   m.Department,
 		Credits:      m.Credits,
 		Prerequisite: m.Prerequisite,
 		Semester:     m.Semester,
@@ -150,6 +152,7 @@ func toCourseModel(e *entity.Course) *courseModel {
 		NameEN:       e.NameEN,
 		NameTH:       e.NameTH,
 		Faculty:      e.Faculty,
+		Department:   e.Department,
 		Credits:      e.Credits,
 		Prerequisite: e.Prerequisite,
 		Semester:     e.Semester,
@@ -278,6 +281,7 @@ func (r *courseRepository) Update(ctx context.Context, course *entity.Course) er
 			"name_en":      model.NameEN,
 			"name_th":      model.NameTH,
 			"faculty":      model.Faculty,
+			"department":   model.Department,
 			"credits":      model.Credits,
 			"prerequisite": model.Prerequisite,
 			"semester":     model.Semester,
