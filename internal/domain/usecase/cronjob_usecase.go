@@ -10,6 +10,13 @@ import (
 	"github.com/CPNext-hub/calendar-reg-main-api/pkg/scheduler"
 )
 
+// CronScheduler defines the interface for the cron scheduler interactions.
+type CronScheduler interface {
+	AddJob(job *entity.CronJob) error
+	RemoveJob(id string)
+	TriggerJob(job *entity.CronJob)
+}
+
 // CronJobUsecase defines the business logic for cron jobs.
 type CronJobUsecase interface {
 	CreateCronJob(ctx context.Context, job *entity.CronJob) error
@@ -22,11 +29,11 @@ type CronJobUsecase interface {
 
 type cronJobUsecase struct {
 	repo      repository.CronJobRepository
-	scheduler *scheduler.Scheduler
+	scheduler CronScheduler
 }
 
 // NewCronJobUsecase creates a new instance of CronJobUsecase.
-func NewCronJobUsecase(repo repository.CronJobRepository, sched *scheduler.Scheduler) CronJobUsecase {
+func NewCronJobUsecase(repo repository.CronJobRepository, sched CronScheduler) CronJobUsecase {
 	return &cronJobUsecase{repo: repo, scheduler: sched}
 }
 

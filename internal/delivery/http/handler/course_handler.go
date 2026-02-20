@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"time"
 
@@ -92,7 +93,10 @@ func (h *CourseHandler) GetCourses(c *fiber.Ctx) error {
 // @Accept json
 // @Produce json
 // @Param code path string true "Course Code"
+// @Param acadyear query int true "Academic Year"
+// @Param semester query int true "Semester"
 // @Success 200 {object} dto.CourseResponse
+// @Failure 400 {object} interface{}
 // @Failure 404 {object} interface{}
 // @Failure 500 {object} interface{}
 // @Router /courses/{code} [get]
@@ -101,15 +105,23 @@ func (h *CourseHandler) GetCourse(c *fiber.Ctx) error {
 	acadyear, _ := strconv.Atoi(c.Query("acadyear"))
 	semester, _ := strconv.Atoi(c.Query("semester"))
 
+	if acadyear == 0 || semester == 0 {
+		return response.BadRequest(adapter.NewFiberResponder(c), "Missing or invalid acadyear/semester")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	course, err := h.usecase.GetCourseByCode(ctx, code, acadyear, semester)
 	if err != nil {
-		return response.InternalError(adapter.NewFiberResponder(c), err.Error())
-	}
-	if course == nil {
-		return response.NotFound(adapter.NewFiberResponder(c), "Course not found")
+		switch {
+		case errors.Is(err, usecase.ErrCourseNotFound):
+			return response.NotFound(adapter.NewFiberResponder(c), "Course not found")
+		case errors.Is(err, usecase.ErrCourseFetchPending):
+			return response.OK(adapter.NewFiberResponder(c), map[string]string{"message": "Course data is being fetched, please try again"})
+		default:
+			return response.InternalError(adapter.NewFiberResponder(c), err.Error())
+		}
 	}
 
 	return response.OK(adapter.NewFiberResponder(c), dto.ToCourseResponse(course))

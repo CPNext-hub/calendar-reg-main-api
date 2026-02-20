@@ -6,6 +6,8 @@ definitions:
         type: string
       credits:
         type: string
+      department:
+        type: string
       faculty:
         type: string
       id:
@@ -15,8 +17,6 @@ definitions:
       name_th:
         type: string
       prerequisite:
-        type: string
-      program:
         type: string
       sections:
         items:
@@ -35,6 +35,8 @@ definitions:
         type: string
       credits:
         type: string
+      department:
+        type: string
       faculty:
         type: string
       name_en:
@@ -42,8 +44,6 @@ definitions:
       name_th:
         type: string
       prerequisite:
-        type: string
-      program:
         type: string
       sections:
         items:
@@ -53,6 +53,47 @@ definitions:
         type: integer
       year:
         type: integer
+    type: object
+  dto.CreateCronJobRequest:
+    properties:
+      acadyear:
+        type: integer
+      course_codes:
+        items:
+          type: string
+        type: array
+      cron_expr:
+        description: e.g. "0 */6 * * *"
+        type: string
+      enabled:
+        type: boolean
+      name:
+        type: string
+      semester:
+        type: integer
+    type: object
+  dto.CronJobResponse:
+    properties:
+      acadyear:
+        type: integer
+      course_codes:
+        items:
+          type: string
+        type: array
+      created_at:
+        type: string
+      cron_expr:
+        type: string
+      enabled:
+        type: boolean
+      id:
+        type: string
+      name:
+        type: string
+      semester:
+        type: integer
+      updated_at:
+        type: string
     type: object
   dto.HealthResponse:
     properties:
@@ -133,12 +174,28 @@ definitions:
     type: object
   dto.SectionRequest:
     properties:
+      campus:
+        type: string
       exam_date:
         type: string
+      id:
+        type: string
       instructor:
+        items:
+          type: string
+        type: array
+      midterm_date:
+        type: string
+      note:
         type: string
       number:
         type: string
+      program:
+        type: string
+      reserved_for:
+        items:
+          type: string
+        type: array
       schedules:
         items:
           $ref: '#/definitions/dto.ScheduleRequest'
@@ -148,19 +205,54 @@ definitions:
     type: object
   dto.SectionResponse:
     properties:
+      campus:
+        type: string
       exam_end:
         type: string
       exam_start:
         type: string
+      id:
+        type: string
       instructor:
+        items:
+          type: string
+        type: array
+      midterm_end:
+        type: string
+      midterm_start:
+        type: string
+      note:
         type: string
       number:
         type: string
+      program:
+        type: string
+      reserved_for:
+        items:
+          type: string
+        type: array
       schedules:
         items:
           $ref: '#/definitions/dto.ScheduleResponse'
         type: array
       seats:
+        type: integer
+    type: object
+  dto.UpdateCronJobRequest:
+    properties:
+      acadyear:
+        type: integer
+      course_codes:
+        items:
+          type: string
+        type: array
+      cron_expr:
+        type: string
+      enabled:
+        type: boolean
+      name:
+        type: string
+      semester:
         type: integer
     type: object
   dto.VersionResponse:
@@ -178,9 +270,13 @@ definitions:
         items:
           type: string
         type: array
+      pending:
+        type: integer
       processed:
         type: integer
       processing:
+        type: integer
+      workers:
         type: integer
     type: object
 host: localhost:8080
@@ -410,6 +506,16 @@ paths:
         name: code
         required: true
         type: string
+      - description: Academic Year
+        in: query
+        name: acadyear
+        required: true
+        type: integer
+      - description: Semester
+        in: query
+        name: semester
+        required: true
+        type: integer
       produces:
       - application/json
       responses:
@@ -417,6 +523,9 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/dto.CourseResponse'
+        "400":
+          description: Bad Request
+          schema: {}
         "404":
           description: Not Found
           schema: {}
@@ -426,6 +535,148 @@ paths:
       summary: Get course by code
       tags:
       - courses
+  /cronjobs:
+    get:
+      description: Retrieve all cron jobs
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.CronJobResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Get all cron jobs
+      tags:
+      - cronjobs
+    post:
+      consumes:
+      - application/json
+      description: Create a new cron job for scheduled course data refresh
+      parameters:
+      - description: CronJob Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateCronJobRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.CronJobResponse'
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Create a new cron job
+      tags:
+      - cronjobs
+  /cronjobs/{id}:
+    delete:
+      description: Soft delete a cron job by ID
+      parameters:
+      - description: CronJob ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Delete cron job
+      tags:
+      - cronjobs
+    get:
+      description: Retrieve a specific cron job by its ID
+      parameters:
+      - description: CronJob ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CronJobResponse'
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Get cron job by ID
+      tags:
+      - cronjobs
+    put:
+      consumes:
+      - application/json
+      description: Update an existing cron job by ID
+      parameters:
+      - description: CronJob ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: CronJob Update Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateCronJobRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CronJobResponse'
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Update cron job
+      tags:
+      - cronjobs
+  /cronjobs/{id}/trigger:
+    post:
+      description: Manually trigger a cron job to run immediately
+      parameters:
+      - description: CronJob ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Trigger cron job
+      tags:
+      - cronjobs
   /queue/status:
     get:
       description: Returns pending, processed, dropped counts and capacity

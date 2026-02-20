@@ -20,6 +20,7 @@ var courses = map[string]*pb.FetchByCodeResponse{
 		NameEn:       "Software Engineering",
 		NameTh:       "วิศวกรรมซอฟต์แวร์",
 		Faculty:      "College of Computing",
+		Department:   "Computer Science",
 		Credits:      "3(2-2-5)",
 		Prerequisite: "CP353002",
 		Semester:     1,
@@ -28,7 +29,7 @@ var courses = map[string]*pb.FetchByCodeResponse{
 			{
 				Number:      "02",
 				Seats:       40,
-				Instructor:  "Assoc. Prof. Dr. Chitsutha Soomlek",
+				Instructor:  []string{"Assoc. Prof. Dr. Chitsutha Soomlek"},
 				ExamDate:    "31 มี.ค. 2567 เวลา 13:00 - 16:00",
 				MidtermDate: "15 ก.พ. 2567 เวลา 09:00 - 12:00",
 				Note:        "",
@@ -47,6 +48,7 @@ var courses = map[string]*pb.FetchByCodeResponse{
 		NameEn:       "Object-Oriented Programming",
 		NameTh:       "การเขียนโปรแกรมเชิงวัตถุ",
 		Faculty:      "College of Computing",
+		Department:   "Computer Science",
 		Credits:      "3(2-2-5)",
 		Prerequisite: "",
 		Semester:     1,
@@ -55,7 +57,7 @@ var courses = map[string]*pb.FetchByCodeResponse{
 			{
 				Number:      "01",
 				Seats:       60,
-				Instructor:  "Dr. Somchai Prasit",
+				Instructor:  []string{"Dr. Somchai Prasit"},
 				ExamDate:    "28 มี.ค. 2567 เวลา 09:00 - 12:00",
 				MidtermDate: "10 ก.พ. 2567 เวลา 09:00 - 12:00",
 				Note:        "ผู้สอบไม่ผ่าน",
@@ -74,6 +76,7 @@ var courses = map[string]*pb.FetchByCodeResponse{
 		NameEn:       "Database Systems",
 		NameTh:       "ระบบฐานข้อมูล",
 		Faculty:      "College of Computing",
+		Department:   "Computer Science",
 		Credits:      "3(2-2-5)",
 		Prerequisite: "CP353002",
 		Semester:     2,
@@ -82,7 +85,7 @@ var courses = map[string]*pb.FetchByCodeResponse{
 			{
 				Number:      "01",
 				Seats:       45,
-				Instructor:  "Asst. Prof. Dr. Wanida Kanarkard",
+				Instructor:  []string{"Asst. Prof. Dr. Wanida Kanarkard"},
 				ExamDate:    "30 มี.ค. 2567 เวลา 09:00 - 12:00",
 				MidtermDate: "12 ก.พ. 2567 เวลา 13:00 - 16:00",
 				Note:        "Closed",
@@ -102,11 +105,18 @@ type server struct {
 	pb.UnimplementedCourseServiceServer
 }
 
+// sleepDuration can be modified during tests
+var sleepDuration = 20 * time.Second
+
+// injectable functions for testability
+var runFunc = run
+var logFatal = log.Fatalf
+
 func (s *server) FetchByCode(_ context.Context, req *pb.FetchByCodeRequest) (*pb.FetchByCodeResponse, error) {
 	log.Printf("FetchByCode request: code=%s acadyear=%d semester=%d", req.Code, req.Acadyear, req.Semester)
 
 	// Simulate slow response
-	time.Sleep(20 * time.Second)
+	time.Sleep(sleepDuration)
 
 	course, ok := courses[req.Code]
 	if !ok {
@@ -115,19 +125,32 @@ func (s *server) FetchByCode(_ context.Context, req *pb.FetchByCodeRequest) (*pb
 	return course, nil
 }
 
-func main() {
-	const port = ":50051"
-	lis, err := net.Listen("tcp", port)
+func run(ctx context.Context, addr string, ready chan<- string) error {
+	lis, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		return err
+	}
+
+	if ready != nil {
+		ready <- lis.Addr().String()
 	}
 
 	s := grpc.NewServer()
 	pb.RegisterCourseServiceServer(s, &server{})
 
-	log.Printf("🚀 Mock Course gRPC server running at %s", port)
+	// Handle context cancellation to stop server
+	go func() {
+		<-ctx.Done()
+		s.Stop()
+	}()
+
+	log.Printf("🚀 Mock Course gRPC server running at %s", lis.Addr().String())
 	log.Printf("📚 Available courses: CP353004, CP353002, CP353006")
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+	return s.Serve(lis)
+}
+
+func main() {
+	if err := runFunc(context.Background(), ":50051", nil); err != nil {
+		logFatal("failed to serve: %v", err)
 	}
 }

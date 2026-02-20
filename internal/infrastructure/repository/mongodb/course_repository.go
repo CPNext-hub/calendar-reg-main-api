@@ -21,6 +21,7 @@ type courseModel struct {
 	NameEN       string         `bson:"name_en"`
 	NameTH       string         `bson:"name_th"`
 	Faculty      string         `bson:"faculty"`
+	Department   string         `bson:"department,omitempty"`
 	Credits      string         `bson:"credits"`
 	Prerequisite string         `bson:"prerequisite,omitempty"`
 	Semester     int            `bson:"semester"`
@@ -29,14 +30,15 @@ type courseModel struct {
 }
 
 type sectionModel struct {
+	ID           bson.ObjectID   `bson:"_id"`
 	Number       string          `bson:"number"`
 	Schedules    []scheduleModel `bson:"schedules"`
 	Seats        int             `bson:"seats"`
-	Instructor   string          `bson:"instructor"`
-	ExamStart    time.Time       `bson:"exam_start,omitempty"`
-	ExamEnd      time.Time       `bson:"exam_end,omitempty"`
-	MidtermStart time.Time       `bson:"midterm_start,omitempty"`
-	MidtermEnd   time.Time       `bson:"midterm_end,omitempty"`
+	Instructor   []string        `bson:"instructor"`
+	ExamStart    string          `bson:"exam_start,omitempty"`
+	ExamEnd      string          `bson:"exam_end,omitempty"`
+	MidtermStart string          `bson:"midterm_start,omitempty"`
+	MidtermEnd   string          `bson:"midterm_end,omitempty"`
 	Note         string          `bson:"note,omitempty"`
 	ReservedFor  []string        `bson:"reserved_for,omitempty"`
 	Campus       string          `bson:"campus,omitempty"`
@@ -44,11 +46,11 @@ type sectionModel struct {
 }
 
 type scheduleModel struct {
-	Day       string    `bson:"day"`
-	StartTime time.Time `bson:"start_time"`
-	EndTime   time.Time `bson:"end_time"`
-	Room      string    `bson:"room"`
-	Type      string    `bson:"type"`
+	Day       string `bson:"day"`
+	StartTime string `bson:"start_time"`
+	EndTime   string `bson:"end_time"`
+	Room      string `bson:"room"`
+	Type      string `bson:"type"`
 }
 
 // compositeFilter builds the composite key filter for lookups.
@@ -76,6 +78,7 @@ func (m *courseModel) toEntity() *entity.Course {
 			}
 		}
 		sections[i] = entity.Section{
+			ID:           s.ID.Hex(),
 			Number:       s.Number,
 			Schedules:    schedules,
 			Seats:        s.Seats,
@@ -107,6 +110,7 @@ func (m *courseModel) toEntity() *entity.Course {
 		NameEN:       m.NameEN,
 		NameTH:       m.NameTH,
 		Faculty:      m.Faculty,
+		Department:   m.Department,
 		Credits:      m.Credits,
 		Prerequisite: m.Prerequisite,
 		Semester:     m.Semester,
@@ -129,7 +133,23 @@ func toCourseModel(e *entity.Course) *courseModel {
 				Type:      sc.Type,
 			}
 		}
+
+		var secID bson.ObjectID
+		if s.ID != "" {
+			oid, err := bson.ObjectIDFromHex(s.ID)
+			if err == nil {
+				secID = oid
+			} else {
+				secID = bson.NewObjectID()
+				e.Sections[i].ID = secID.Hex()
+			}
+		} else {
+			secID = bson.NewObjectID()
+			e.Sections[i].ID = secID.Hex()
+		}
+
 		sections[i] = sectionModel{
+			ID:           secID,
 			Number:       s.Number,
 			Schedules:    schedules,
 			Seats:        s.Seats,
@@ -150,6 +170,7 @@ func toCourseModel(e *entity.Course) *courseModel {
 		NameEN:       e.NameEN,
 		NameTH:       e.NameTH,
 		Faculty:      e.Faculty,
+		Department:   e.Department,
 		Credits:      e.Credits,
 		Prerequisite: e.Prerequisite,
 		Semester:     e.Semester,
@@ -278,6 +299,7 @@ func (r *courseRepository) Update(ctx context.Context, course *entity.Course) er
 			"name_en":      model.NameEN,
 			"name_th":      model.NameTH,
 			"faculty":      model.Faculty,
+			"department":   model.Department,
 			"credits":      model.Credits,
 			"prerequisite": model.Prerequisite,
 			"semester":     model.Semester,

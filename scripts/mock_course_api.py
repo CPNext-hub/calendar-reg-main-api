@@ -24,7 +24,7 @@ COURSES = {
             {
                 "number": "02",
                 "seats": 40,
-                "instructor": "Assoc. Prof. Dr. Chitsutha Soomlek",
+                "instructor": ["Assoc. Prof. Dr. Chitsutha Soomlek"],
                 "exam_date": "31 มี.ค. 2567 เวลา 13:00 - 16:00",
                 "schedules": [
                     {"day": "Monday", "time": "15:00-17:00", "room": "CP9127", "type": "Lecture"},
@@ -47,7 +47,7 @@ COURSES = {
             {
                 "number": "01",
                 "seats": 60,
-                "instructor": "Dr. Somchai Prasit",
+                "instructor": ["Dr. Somchai Prasit"],
                 "exam_date": "28 มี.ค. 2567 เวลา 09:00 - 12:00",
                 "schedules": [
                     {"day": "Tuesday", "time": "09:00-11:00", "room": "CP9101", "type": "Lecture"},
@@ -70,7 +70,7 @@ COURSES = {
             {
                 "number": "01",
                 "seats": 45,
-                "instructor": "Asst. Prof. Dr. Wanida Kanarkard",
+                "instructor": ["Asst. Prof. Dr. Wanida Kanarkard"],
                 "exam_date": "30 มี.ค. 2567 เวลา 09:00 - 12:00",
                 "schedules": [
                     {"day": "Monday", "time": "09:00-11:00", "room": "CP9205", "type": "Lecture"},

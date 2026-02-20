@@ -14,6 +14,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// Package-level function vars for testability.
+var hashPassword = func(password []byte, cost int) ([]byte, error) {
+	return bcrypt.GenerateFromPassword(password, cost)
+}
+
+var signToken = func(token *jwt.Token, secret []byte) (string, error) {
+	return token.SignedString(secret)
+}
+
 // AuthUsecase defines the business logic for authentication.
 type AuthUsecase interface {
 	Register(ctx context.Context, username, password string, role string, callerRole *string) (*entity.User, error)
@@ -47,7 +56,7 @@ func (u *authUsecase) SeedSuperAdmin(ctx context.Context, username, password str
 		return
 	}
 
-	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hashed, err := hashPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Printf("Warning: failed to hash superadmin password: %v", err)
 		return
@@ -95,7 +104,7 @@ func (u *authUsecase) Register(ctx context.Context, username, password string, r
 	}
 
 	// Hash password
-	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hashed, err := hashPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +146,7 @@ func (u *authUsecase) Login(ctx context.Context, username, password string) (str
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signed, err := token.SignedString(u.jwtSecret)
+	signed, err := signToken(token, u.jwtSecret)
 	if err != nil {
 		return "", err
 	}

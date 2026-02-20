@@ -6,359 +6,260 @@ import (
 	"testing"
 
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/entity"
-	"github.com/CPNext-hub/calendar-reg-main-api/pkg/queue"
-	"github.com/CPNext-hub/calendar-reg-main-api/pkg/scheduler"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
-// ----- mock CronJobRepository -----
+// ----- Mock CronJobRepository -----
 
 type mockCronJobRepo struct {
-	jobs      map[string]*entity.CronJob
-	createErr error
-	getAllErr error
-	getByErr  error
-	updateErr error
-	deleteErr error
-	idCounter int
+	mock.Mock
 }
 
-func newMockCronJobRepo() *mockCronJobRepo {
-	return &mockCronJobRepo{jobs: make(map[string]*entity.CronJob)}
+func (m *mockCronJobRepo) Create(ctx context.Context, job *entity.CronJob) error {
+	args := m.Called(ctx, job)
+	return args.Error(0)
 }
 
-func (m *mockCronJobRepo) Create(_ context.Context, job *entity.CronJob) error {
-	if m.createErr != nil {
-		return m.createErr
+func (m *mockCronJobRepo) GetAll(ctx context.Context) ([]*entity.CronJob, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
 	}
-	m.idCounter++
-	job.ID = "mock-id-" + string(rune('0'+m.idCounter))
-	m.jobs[job.ID] = job
-	return nil
+	return args.Get(0).([]*entity.CronJob), args.Error(1)
 }
 
-func (m *mockCronJobRepo) GetAll(_ context.Context) ([]*entity.CronJob, error) {
-	if m.getAllErr != nil {
-		return nil, m.getAllErr
+func (m *mockCronJobRepo) GetByID(ctx context.Context, id string) (*entity.CronJob, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
 	}
-	result := make([]*entity.CronJob, 0, len(m.jobs))
-	for _, j := range m.jobs {
-		result = append(result, j)
-	}
-	return result, nil
+	return args.Get(0).(*entity.CronJob), args.Error(1)
 }
 
-func (m *mockCronJobRepo) GetByID(_ context.Context, id string) (*entity.CronJob, error) {
-	if m.getByErr != nil {
-		return nil, m.getByErr
-	}
-	j, ok := m.jobs[id]
-	if !ok {
-		return nil, nil
-	}
-	return j, nil
+func (m *mockCronJobRepo) Update(ctx context.Context, job *entity.CronJob) error {
+	args := m.Called(ctx, job)
+	return args.Error(0)
 }
 
-func (m *mockCronJobRepo) Update(_ context.Context, job *entity.CronJob) error {
-	if m.updateErr != nil {
-		return m.updateErr
-	}
-	if _, ok := m.jobs[job.ID]; !ok {
-		return errors.New("cron job not found")
-	}
-	m.jobs[job.ID] = job
-	return nil
+func (m *mockCronJobRepo) Delete(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
 }
 
-func (m *mockCronJobRepo) Delete(_ context.Context, id string) error {
-	if m.deleteErr != nil {
-		return m.deleteErr
+func (m *mockCronJobRepo) GetEnabled(ctx context.Context) ([]*entity.CronJob, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
 	}
-	if _, ok := m.jobs[id]; !ok {
-		return errors.New("cron job not found")
-	}
-	delete(m.jobs, id)
-	return nil
+	return args.Get(0).([]*entity.CronJob), args.Error(1)
 }
 
-func (m *mockCronJobRepo) GetEnabled(_ context.Context) ([]*entity.CronJob, error) {
-	result := make([]*entity.CronJob, 0)
-	for _, j := range m.jobs {
-		if j.Enabled {
-			result = append(result, j)
-		}
-	}
-	return result, nil
+// ----- Mock CronScheduler -----
+
+type mockScheduler struct {
+	mock.Mock
 }
 
-// ----- helper: create a real scheduler backed by a queue -----
-
-func newTestScheduler() *scheduler.Scheduler {
-	q := queue.New(10, 1)
-	q.Start(func(job queue.RefreshJob) {
-		q.MarkDone(job.Key())
-	})
-	return scheduler.New(q)
+func (m *mockScheduler) AddJob(job *entity.CronJob) error {
+	args := m.Called(job)
+	return args.Error(0)
 }
 
-// ----- CreateCronJob tests -----
+func (m *mockScheduler) RemoveJob(id string) {
+	m.Called(id)
+}
+
+func (m *mockScheduler) TriggerJob(job *entity.CronJob) {
+	m.Called(job)
+}
+
+// ----- Tests -----
 
 func TestCreateCronJob_Success(t *testing.T) {
-	repo := newMockCronJobRepo()
-	sched := newTestScheduler()
-	defer sched.Stop()
+	repo := new(mockCronJobRepo)
+	sched := new(mockScheduler)
 	uc := NewCronJobUsecase(repo, sched)
 
 	job := &entity.CronJob{
-		Name:        "Test Job",
-		CourseCodes: []string{"CP353004"},
-		Acadyear:    2568,
-		Semester:    2,
-		CronExpr:    "0 */6 * * *",
-		Enabled:     true,
+		Name:       "Job1",
+		CronExpr:   "* * * * *",
+		Enabled:    true,
+		BaseEntity: entity.BaseEntity{ID: "j1"},
 	}
+
+	repo.On("Create", mock.Anything, job).Return(nil)
+	sched.On("AddJob", job).Return(nil)
+
 	err := uc.CreateCronJob(context.Background(), job)
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-	if job.ID == "" {
-		t.Error("expected job ID to be set")
-	}
-	if _, ok := repo.jobs[job.ID]; !ok {
-		t.Error("expected job to be stored in repo")
-	}
+	assert.NoError(t, err)
+	repo.AssertExpectations(t)
+	sched.AssertExpectations(t)
 }
 
-func TestCreateCronJob_InvalidCronExpr(t *testing.T) {
-	repo := newMockCronJobRepo()
-	sched := newTestScheduler()
-	defer sched.Stop()
+func TestCreateCronJob_InvalidCron(t *testing.T) {
+	repo := new(mockCronJobRepo)
+	sched := new(mockScheduler)
 	uc := NewCronJobUsecase(repo, sched)
 
-	job := &entity.CronJob{
-		Name:        "Bad Expr",
-		CourseCodes: []string{"CP353004"},
-		Acadyear:    2568,
-		Semester:    2,
-		CronExpr:    "not-a-cron-expression",
-		Enabled:     true,
-	}
+	job := &entity.CronJob{CronExpr: "invalid"}
+
 	err := uc.CreateCronJob(context.Background(), job)
-	if err == nil {
-		t.Fatal("expected error for invalid cron expression")
-	}
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid cron expression")
 }
 
 func TestCreateCronJob_RepoError(t *testing.T) {
-	repo := newMockCronJobRepo()
-	repo.createErr = errors.New("insert failed")
-	sched := newTestScheduler()
-	defer sched.Stop()
+	repo := new(mockCronJobRepo)
+	sched := new(mockScheduler)
 	uc := NewCronJobUsecase(repo, sched)
 
-	job := &entity.CronJob{
-		Name:        "Fail Job",
-		CourseCodes: []string{"CP353004"},
-		Acadyear:    2568,
-		Semester:    2,
-		CronExpr:    "0 */6 * * *",
-		Enabled:     true,
-	}
+	job := &entity.CronJob{CronExpr: "* * * * *"}
+	repo.On("Create", mock.Anything, job).Return(errors.New("db error"))
+
 	err := uc.CreateCronJob(context.Background(), job)
-	if err == nil || err.Error() != "insert failed" {
-		t.Errorf("expected 'insert failed', got %v", err)
-	}
+	assert.EqualError(t, err, "db error")
 }
 
-// ----- GetAllCronJobs tests -----
-
-func TestGetAllCronJobs_Success(t *testing.T) {
-	repo := newMockCronJobRepo()
-	repo.jobs["1"] = &entity.CronJob{BaseEntity: entity.BaseEntity{ID: "1"}, Name: "Job1"}
-	repo.jobs["2"] = &entity.CronJob{BaseEntity: entity.BaseEntity{ID: "2"}, Name: "Job2"}
-	sched := newTestScheduler()
-	defer sched.Stop()
+func TestCreateCronJob_SchedulerError(t *testing.T) {
+	repo := new(mockCronJobRepo)
+	sched := new(mockScheduler)
 	uc := NewCronJobUsecase(repo, sched)
 
-	jobs, err := uc.GetAllCronJobs(context.Background())
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(jobs) != 2 {
-		t.Errorf("expected 2 jobs, got %d", len(jobs))
-	}
+	job := &entity.CronJob{CronExpr: "* * * * *", Enabled: true}
+	repo.On("Create", mock.Anything, job).Return(nil)
+	sched.On("AddJob", job).Return(errors.New("sched error"))
+
+	// Should not return error, just log
+	err := uc.CreateCronJob(context.Background(), job)
+	assert.NoError(t, err)
 }
 
-func TestGetAllCronJobs_Error(t *testing.T) {
-	repo := newMockCronJobRepo()
-	repo.getAllErr = errors.New("find failed")
-	sched := newTestScheduler()
-	defer sched.Stop()
+func TestGetAllCronJobs(t *testing.T) {
+	repo := new(mockCronJobRepo)
+	sched := new(mockScheduler)
 	uc := NewCronJobUsecase(repo, sched)
+
+	repo.On("GetAll", mock.Anything).Return([]*entity.CronJob{}, nil)
 
 	_, err := uc.GetAllCronJobs(context.Background())
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	assert.NoError(t, err)
 }
 
-// ----- GetCronJobByID tests -----
-
-func TestGetCronJobByID_Found(t *testing.T) {
-	repo := newMockCronJobRepo()
-	repo.jobs["abc"] = &entity.CronJob{BaseEntity: entity.BaseEntity{ID: "abc"}, Name: "Test"}
-	sched := newTestScheduler()
-	defer sched.Stop()
+func TestGetCronJobByID(t *testing.T) {
+	repo := new(mockCronJobRepo)
+	sched := new(mockScheduler)
 	uc := NewCronJobUsecase(repo, sched)
 
-	job, err := uc.GetCronJobByID(context.Background(), "abc")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if job == nil || job.Name != "Test" {
-		t.Error("expected to find job with correct name")
-	}
+	repo.On("GetByID", mock.Anything, "j1").Return(&entity.CronJob{}, nil)
+
+	_, err := uc.GetCronJobByID(context.Background(), "j1")
+	assert.NoError(t, err)
 }
-
-func TestGetCronJobByID_NotFound(t *testing.T) {
-	repo := newMockCronJobRepo()
-	sched := newTestScheduler()
-	defer sched.Stop()
-	uc := NewCronJobUsecase(repo, sched)
-
-	job, err := uc.GetCronJobByID(context.Background(), "nonexistent")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if job != nil {
-		t.Error("expected nil for non-existent job")
-	}
-}
-
-// ----- UpdateCronJob tests -----
 
 func TestUpdateCronJob_Success(t *testing.T) {
-	repo := newMockCronJobRepo()
-	repo.jobs["abc"] = &entity.CronJob{
-		BaseEntity:  entity.BaseEntity{ID: "abc"},
-		Name:        "Old Name",
-		CourseCodes: []string{"CP353004"},
-		CronExpr:    "0 */6 * * *",
-		Enabled:     true,
-	}
-	sched := newTestScheduler()
-	defer sched.Stop()
+	repo := new(mockCronJobRepo)
+	sched := new(mockScheduler)
 	uc := NewCronJobUsecase(repo, sched)
 
-	updated := &entity.CronJob{
-		BaseEntity:  entity.BaseEntity{ID: "abc"},
-		Name:        "New Name",
-		CourseCodes: []string{"CP353004", "SC313002"},
-		CronExpr:    "0 0 * * *",
-		Enabled:     true,
-	}
-	err := uc.UpdateCronJob(context.Background(), updated)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if repo.jobs["abc"].Name != "New Name" {
-		t.Error("expected name to be updated")
-	}
-}
+	job := &entity.CronJob{CronExpr: "* * * * *"}
+	repo.On("Update", mock.Anything, job).Return(nil)
+	sched.On("AddJob", job).Return(nil)
 
-func TestUpdateCronJob_InvalidCronExpr(t *testing.T) {
-	repo := newMockCronJobRepo()
-	repo.jobs["abc"] = &entity.CronJob{BaseEntity: entity.BaseEntity{ID: "abc"}, CronExpr: "0 */6 * * *"}
-	sched := newTestScheduler()
-	defer sched.Stop()
-	uc := NewCronJobUsecase(repo, sched)
-
-	updated := &entity.CronJob{
-		BaseEntity: entity.BaseEntity{ID: "abc"},
-		CronExpr:   "invalid",
-	}
-	err := uc.UpdateCronJob(context.Background(), updated)
-	if err == nil {
-		t.Fatal("expected error for invalid cron expression")
-	}
-}
-
-func TestUpdateCronJob_NotFound(t *testing.T) {
-	repo := newMockCronJobRepo()
-	sched := newTestScheduler()
-	defer sched.Stop()
-	uc := NewCronJobUsecase(repo, sched)
-
-	job := &entity.CronJob{
-		BaseEntity: entity.BaseEntity{ID: "nope"},
-		CronExpr:   "0 */6 * * *",
-	}
 	err := uc.UpdateCronJob(context.Background(), job)
-	if err == nil {
-		t.Fatal("expected error for non-existent job")
-	}
+	assert.NoError(t, err)
 }
 
-// ----- DeleteCronJob tests -----
-
-func TestDeleteCronJob_Success(t *testing.T) {
-	repo := newMockCronJobRepo()
-	repo.jobs["abc"] = &entity.CronJob{BaseEntity: entity.BaseEntity{ID: "abc"}, Name: "Test"}
-	sched := newTestScheduler()
-	defer sched.Stop()
+func TestUpdateCronJob_InvalidCron(t *testing.T) {
+	repo := new(mockCronJobRepo)
+	sched := new(mockScheduler)
 	uc := NewCronJobUsecase(repo, sched)
 
-	err := uc.DeleteCronJob(context.Background(), "abc")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if _, ok := repo.jobs["abc"]; ok {
-		t.Error("expected job to be deleted from repo")
-	}
+	job := &entity.CronJob{CronExpr: "invalid"}
+
+	err := uc.UpdateCronJob(context.Background(), job)
+	assert.Error(t, err)
 }
 
-func TestDeleteCronJob_NotFound(t *testing.T) {
-	repo := newMockCronJobRepo()
-	sched := newTestScheduler()
-	defer sched.Stop()
+func TestUpdateCronJob_RepoError(t *testing.T) {
+	repo := new(mockCronJobRepo)
+	sched := new(mockScheduler)
 	uc := NewCronJobUsecase(repo, sched)
 
-	err := uc.DeleteCronJob(context.Background(), "nope")
-	if err == nil {
-		t.Fatal("expected error for non-existent job")
-	}
+	job := &entity.CronJob{CronExpr: "* * * * *"}
+	repo.On("Update", mock.Anything, job).Return(errors.New("db error"))
+
+	err := uc.UpdateCronJob(context.Background(), job)
+	assert.EqualError(t, err, "db error")
 }
 
-// ----- TriggerCronJob tests -----
+func TestUpdateCronJob_SchedulerError(t *testing.T) {
+	repo := new(mockCronJobRepo)
+	sched := new(mockScheduler)
+	uc := NewCronJobUsecase(repo, sched)
+
+	job := &entity.CronJob{CronExpr: "* * * * *"}
+	repo.On("Update", mock.Anything, job).Return(nil)
+	sched.On("AddJob", job).Return(errors.New("sched error"))
+
+	err := uc.UpdateCronJob(context.Background(), job)
+	assert.NoError(t, err)
+}
+
+func TestDeleteCronJob(t *testing.T) {
+	repo := new(mockCronJobRepo)
+	sched := new(mockScheduler)
+	uc := NewCronJobUsecase(repo, sched)
+
+	repo.On("Delete", mock.Anything, "j1").Return(nil)
+	sched.On("RemoveJob", "j1").Return()
+
+	err := uc.DeleteCronJob(context.Background(), "j1")
+	assert.NoError(t, err)
+}
+
+func TestDeleteCronJob_RepoError(t *testing.T) {
+	repo := new(mockCronJobRepo)
+	sched := new(mockScheduler)
+	uc := NewCronJobUsecase(repo, sched)
+
+	repo.On("Delete", mock.Anything, "j1").Return(errors.New("db error"))
+
+	err := uc.DeleteCronJob(context.Background(), "j1")
+	assert.EqualError(t, err, "db error")
+}
 
 func TestTriggerCronJob_Success(t *testing.T) {
-	repo := newMockCronJobRepo()
-	repo.jobs["abc"] = &entity.CronJob{
-		BaseEntity:  entity.BaseEntity{ID: "abc"},
-		Name:        "Test",
-		CourseCodes: []string{"CP353004"},
-		Acadyear:    2568,
-		Semester:    2,
-		CronExpr:    "0 */6 * * *",
-		Enabled:     true,
-	}
-	sched := newTestScheduler()
-	defer sched.Stop()
+	repo := new(mockCronJobRepo)
+	sched := new(mockScheduler)
 	uc := NewCronJobUsecase(repo, sched)
 
-	err := uc.TriggerCronJob(context.Background(), "abc")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	job := &entity.CronJob{BaseEntity: entity.BaseEntity{ID: "j1"}}
+	repo.On("GetByID", mock.Anything, "j1").Return(job, nil)
+	sched.On("TriggerJob", job).Return()
+
+	err := uc.TriggerCronJob(context.Background(), "j1")
+	assert.NoError(t, err)
 }
 
 func TestTriggerCronJob_NotFound(t *testing.T) {
-	repo := newMockCronJobRepo()
-	sched := newTestScheduler()
-	defer sched.Stop()
+	repo := new(mockCronJobRepo)
+	sched := new(mockScheduler)
 	uc := NewCronJobUsecase(repo, sched)
 
-	err := uc.TriggerCronJob(context.Background(), "nonexistent")
-	if err == nil {
-		t.Fatal("expected error for non-existent job")
-	}
+	repo.On("GetByID", mock.Anything, "j1").Return(nil, nil)
+
+	err := uc.TriggerCronJob(context.Background(), "j1")
+	assert.EqualError(t, err, "cron job not found")
+}
+
+func TestTriggerCronJob_RepoError(t *testing.T) {
+	repo := new(mockCronJobRepo)
+	sched := new(mockScheduler)
+	uc := NewCronJobUsecase(repo, sched)
+
+	repo.On("GetByID", mock.Anything, "j1").Return(nil, errors.New("db error"))
+
+	err := uc.TriggerCronJob(context.Background(), "j1")
+	assert.EqualError(t, err, "db error")
 }

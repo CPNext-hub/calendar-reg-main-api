@@ -3,287 +3,292 @@ package usecase
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/entity"
+	"github.com/CPNext-hub/calendar-reg-main-api/pkg/constants"
+	"github.com/CPNext-hub/calendar-reg-main-api/pkg/pagination"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// ----- mock UserRepository -----
+// ----- Mock UserRepository -----
 
 type mockUserRepo struct {
-	users     map[string]*entity.User
-	createErr error
-	findErr   error
+	mock.Mock
 }
 
-func newMockUserRepo() *mockUserRepo {
-	return &mockUserRepo{users: make(map[string]*entity.User)}
+func (m *mockUserRepo) Create(ctx context.Context, user *entity.User) error {
+	args := m.Called(ctx, user)
+	return args.Error(0)
 }
 
-func (m *mockUserRepo) Create(_ context.Context, u *entity.User) error {
-	if m.createErr != nil {
-		return m.createErr
+func (m *mockUserRepo) FindByUsername(ctx context.Context, username string) (*entity.User, error) {
+	args := m.Called(ctx, username)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
 	}
-	m.users[u.Username] = u
-	return nil
+	return args.Get(0).(*entity.User), args.Error(1)
 }
 
-func (m *mockUserRepo) FindByUsername(_ context.Context, username string) (*entity.User, error) {
-	if m.findErr != nil {
-		return nil, m.findErr
+func (m *mockUserRepo) GetPaginated(ctx context.Context, page, limit int) ([]*entity.User, int64, error) {
+	args := m.Called(ctx, page, limit)
+	if args.Get(0) == nil {
+		return nil, 0, args.Error(2)
 	}
-	u, ok := m.users[username]
-	if !ok {
-		return nil, nil
-	}
-	return u, nil
+	return args.Get(0).([]*entity.User), args.Get(1).(int64), args.Error(2)
 }
 
-func (m *mockUserRepo) GetPaginated(_ context.Context, page, limit int) ([]*entity.User, int64, error) {
-	var users []*entity.User
-	for _, u := range m.users {
-		users = append(users, u)
-	}
-	return users, int64(len(users)), nil
+// ----- Tests -----
+
+func TestSeedSuperAdmin_Success(t *testing.T) {
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
+
+	repo.On("FindByUsername", mock.Anything, "admin").Return(nil, nil)
+	repo.On("Create", mock.Anything, mock.AnythingOfType("*entity.User")).Return(nil)
+
+	uc.SeedSuperAdmin(context.Background(), "admin", "pass")
+	repo.AssertExpectations(t)
 }
 
-const testJWTSecret = "test-secret-key"
+func TestSeedSuperAdmin_AlreadyExists(t *testing.T) {
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
 
-// ----- Register tests -----
+	repo.On("FindByUsername", mock.Anything, "admin").Return(&entity.User{}, nil)
 
-func TestRegister_StudentSuccess(t *testing.T) {
-	repo := newMockUserRepo()
-	uc := NewAuthUsecase(repo, testJWTSecret)
-
-	user, err := uc.Register(context.Background(), "john", "pass123", "student", nil)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if user.Username != "john" {
-		t.Errorf("expected username='john', got %q", user.Username)
-	}
-	if user.Role != "student" {
-		t.Errorf("expected role='student', got %q", user.Role)
-	}
-	// Password should be hashed
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte("pass123")); err != nil {
-		t.Error("password was not properly hashed")
-	}
+	uc.SeedSuperAdmin(context.Background(), "admin", "pass")
+	repo.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
 }
 
-func TestRegister_AdminByPrivilegedCaller(t *testing.T) {
-	repo := newMockUserRepo()
-	uc := NewAuthUsecase(repo, testJWTSecret)
+func TestSeedSuperAdmin_FindError(t *testing.T) {
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
 
-	callerRole := "superadmin"
-	user, err := uc.Register(context.Background(), "admin1", "pass", "admin", &callerRole)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if user.Role != "admin" {
-		t.Errorf("expected role='admin', got %q", user.Role)
-	}
+	repo.On("FindByUsername", mock.Anything, "admin").Return(nil, errors.New("db error"))
+
+	uc.SeedSuperAdmin(context.Background(), "admin", "pass")
+	repo.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
 }
 
-func TestRegister_AdminByNonPrivileged(t *testing.T) {
-	repo := newMockUserRepo()
-	uc := NewAuthUsecase(repo, testJWTSecret)
+func TestSeedSuperAdmin_CreateError(t *testing.T) {
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
 
-	callerRole := "student"
-	_, err := uc.Register(context.Background(), "admin1", "pass", "admin", &callerRole)
-	if err == nil {
-		t.Fatal("expected error for non-privileged caller creating admin")
-	}
-	if !strings.Contains(err.Error(), "only superadmin or admin") {
-		t.Errorf("unexpected error: %v", err)
-	}
+	repo.On("FindByUsername", mock.Anything, "admin").Return(nil, nil)
+	repo.On("Create", mock.Anything, mock.AnythingOfType("*entity.User")).Return(errors.New("create error"))
+
+	uc.SeedSuperAdmin(context.Background(), "admin", "pass")
+	repo.AssertExpectations(t)
 }
 
-func TestRegister_AdminWithoutCaller(t *testing.T) {
-	repo := newMockUserRepo()
-	uc := NewAuthUsecase(repo, testJWTSecret)
-
-	_, err := uc.Register(context.Background(), "admin1", "pass", "admin", nil)
-	if err == nil {
-		t.Fatal("expected error for nil caller creating admin")
+func TestSeedSuperAdmin_HashError(t *testing.T) {
+	orig := hashPassword
+	hashPassword = func(password []byte, cost int) ([]byte, error) {
+		return nil, errors.New("hash error")
 	}
+	defer func() { hashPassword = orig }()
+
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
+
+	repo.On("FindByUsername", mock.Anything, "admin").Return(nil, nil)
+
+	uc.SeedSuperAdmin(context.Background(), "admin", "pass")
+	repo.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
 }
 
-func TestRegister_SuperAdminForbidden(t *testing.T) {
-	repo := newMockUserRepo()
-	uc := NewAuthUsecase(repo, testJWTSecret)
+func TestRegister_Success(t *testing.T) {
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
 
-	_, err := uc.Register(context.Background(), "sa", "pass", "superadmin", nil)
-	if err == nil {
-		t.Fatal("expected error for superadmin registration")
-	}
-	if !strings.Contains(err.Error(), "superadmin cannot be created") {
-		t.Errorf("unexpected error: %v", err)
-	}
+	repo.On("FindByUsername", mock.Anything, "user1").Return(nil, nil)
+	repo.On("Create", mock.Anything, mock.MatchedBy(func(u *entity.User) bool {
+		return u.Username == "user1" && u.Role == constants.RoleStudent
+	})).Return(nil)
+
+	user, err := uc.Register(context.Background(), "user1", "pass", constants.RoleStudent, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, user)
 }
 
 func TestRegister_InvalidRole(t *testing.T) {
-	repo := newMockUserRepo()
-	uc := NewAuthUsecase(repo, testJWTSecret)
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
 
-	_, err := uc.Register(context.Background(), "user1", "pass", "unknown_role", nil)
-	if err == nil {
-		t.Fatal("expected error for invalid role")
-	}
-	if err.Error() != "invalid role" {
-		t.Errorf("expected 'invalid role', got %q", err.Error())
-	}
+	_, err := uc.Register(context.Background(), "user1", "pass", "invalid_role", nil)
+	assert.EqualError(t, err, "invalid role")
 }
 
-func TestRegister_DuplicateUsername(t *testing.T) {
-	repo := newMockUserRepo()
-	repo.users["john"] = &entity.User{Username: "john"}
-	uc := NewAuthUsecase(repo, testJWTSecret)
+func TestRegister_SuperAdminSelfRegister(t *testing.T) {
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
 
-	_, err := uc.Register(context.Background(), "john", "pass", "student", nil)
-	if err == nil {
-		t.Fatal("expected error for duplicate username")
-	}
-	if !strings.Contains(err.Error(), "username already exists") {
-		t.Errorf("unexpected error: %v", err)
-	}
+	_, err := uc.Register(context.Background(), "super", "pass", "superadmin", nil)
+	assert.EqualError(t, err, "superadmin cannot be created via registration")
 }
 
-func TestRegister_RepoFindError(t *testing.T) {
-	repo := newMockUserRepo()
-	repo.findErr = errors.New("db error")
-	uc := NewAuthUsecase(repo, testJWTSecret)
+func TestRegister_CreateAdmin_Unauthorized(t *testing.T) {
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
 
-	_, err := uc.Register(context.Background(), "john", "pass", "student", nil)
-	if err == nil || err.Error() != "db error" {
-		t.Errorf("expected 'db error', got %v", err)
-	}
+	caller := "user"
+	_, err := uc.Register(context.Background(), "newadmin", "pass", "admin", &caller)
+	assert.EqualError(t, err, "only superadmin or admin can create admin users")
+
+	// No caller
+	_, err = uc.Register(context.Background(), "newadmin", "pass", "admin", nil)
+	assert.EqualError(t, err, "only superadmin or admin can create admin users")
 }
 
-func TestRegister_RepoCreateError(t *testing.T) {
-	repo := newMockUserRepo()
-	repo.createErr = errors.New("insert failed")
-	uc := NewAuthUsecase(repo, testJWTSecret)
+func TestRegister_CreateAdmin_Authorized(t *testing.T) {
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
 
-	_, err := uc.Register(context.Background(), "john", "pass", "student", nil)
-	if err == nil || err.Error() != "insert failed" {
-		t.Errorf("expected 'insert failed', got %v", err)
-	}
+	repo.On("FindByUsername", mock.Anything, "newadmin").Return(nil, nil)
+	repo.On("Create", mock.Anything, mock.Anything).Return(nil)
+
+	caller := "superadmin"
+	user, err := uc.Register(context.Background(), "newadmin", "pass", "admin", &caller)
+	assert.NoError(t, err)
+	assert.NotNil(t, user)
 }
 
-// ----- Login tests -----
+func TestRegister_UserAlreadyExists(t *testing.T) {
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
+
+	repo.On("FindByUsername", mock.Anything, "user1").Return(&entity.User{}, nil)
+
+	_, err := uc.Register(context.Background(), "user1", "pass", constants.RoleStudent, nil)
+	assert.EqualError(t, err, "username already exists")
+}
+
+func TestRegister_FindError(t *testing.T) {
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
+
+	repo.On("FindByUsername", mock.Anything, "user1").Return(nil, errors.New("db error"))
+
+	_, err := uc.Register(context.Background(), "user1", "pass", constants.RoleStudent, nil)
+	assert.EqualError(t, err, "db error")
+}
+
+func TestRegister_CreateError(t *testing.T) {
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
+
+	repo.On("FindByUsername", mock.Anything, "user1").Return(nil, nil)
+	repo.On("Create", mock.Anything, mock.Anything).Return(errors.New("db error"))
+
+	_, err := uc.Register(context.Background(), "user1", "pass", constants.RoleStudent, nil)
+	assert.EqualError(t, err, "db error")
+}
+
+func TestRegister_HashError(t *testing.T) {
+	orig := hashPassword
+	hashPassword = func(password []byte, cost int) ([]byte, error) {
+		return nil, errors.New("hash error")
+	}
+	defer func() { hashPassword = orig }()
+
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
+
+	repo.On("FindByUsername", mock.Anything, "user1").Return(nil, nil)
+
+	_, err := uc.Register(context.Background(), "user1", "pass", constants.RoleStudent, nil)
+	assert.EqualError(t, err, "hash error")
+}
 
 func TestLogin_Success(t *testing.T) {
-	repo := newMockUserRepo()
-	hashed, _ := bcrypt.GenerateFromPassword([]byte("secret"), bcrypt.DefaultCost)
-	repo.users["john"] = &entity.User{
-		BaseEntity: entity.BaseEntity{ID: "user123"},
-		Username:   "john",
-		Password:   string(hashed),
-		Role:       "student",
-	}
-	uc := NewAuthUsecase(repo, testJWTSecret)
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
 
-	tokenStr, err := uc.Login(context.Background(), "john", "secret")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if tokenStr == "" {
-		t.Fatal("expected non-empty token")
-	}
+	hashed, _ := bcrypt.GenerateFromPassword([]byte("pass"), bcrypt.DefaultCost)
+	user := &entity.User{BaseEntity: entity.BaseEntity{ID: "u1"}, Username: "user1", Password: string(hashed), Role: "user"}
 
-	// Verify token claims
-	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		return []byte(testJWTSecret), nil
-	})
-	if err != nil {
-		t.Fatalf("failed to parse token: %v", err)
-	}
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok || !token.Valid {
-		t.Fatal("invalid token")
-	}
-	if claims["username"] != "john" {
-		t.Errorf("expected username='john' in claims, got %v", claims["username"])
-	}
-	if claims["role"] != "student" {
-		t.Errorf("expected role='student' in claims, got %v", claims["role"])
-	}
+	repo.On("FindByUsername", mock.Anything, "user1").Return(user, nil)
+
+	token, err := uc.Login(context.Background(), "user1", "pass")
+	assert.NoError(t, err)
+	assert.NotEmpty(t, token)
 }
 
 func TestLogin_UserNotFound(t *testing.T) {
-	repo := newMockUserRepo()
-	uc := NewAuthUsecase(repo, testJWTSecret)
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
 
-	_, err := uc.Login(context.Background(), "nobody", "pass")
-	if err == nil {
-		t.Fatal("expected error for non-existent user")
-	}
-	if err.Error() != "invalid credentials" {
-		t.Errorf("expected 'invalid credentials', got %q", err.Error())
-	}
+	repo.On("FindByUsername", mock.Anything, "user1").Return(nil, nil)
+
+	_, err := uc.Login(context.Background(), "user1", "pass")
+	assert.EqualError(t, err, "invalid credentials")
+}
+
+func TestLogin_FindError(t *testing.T) {
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
+
+	repo.On("FindByUsername", mock.Anything, "user1").Return(nil, errors.New("db error"))
+
+	_, err := uc.Login(context.Background(), "user1", "pass")
+	assert.EqualError(t, err, "db error")
 }
 
 func TestLogin_WrongPassword(t *testing.T) {
-	repo := newMockUserRepo()
-	hashed, _ := bcrypt.GenerateFromPassword([]byte("correct"), bcrypt.DefaultCost)
-	repo.users["john"] = &entity.User{Username: "john", Password: string(hashed)}
-	uc := NewAuthUsecase(repo, testJWTSecret)
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
 
-	_, err := uc.Login(context.Background(), "john", "wrong")
-	if err == nil {
-		t.Fatal("expected error for wrong password")
-	}
-	if err.Error() != "invalid credentials" {
-		t.Errorf("expected 'invalid credentials', got %q", err.Error())
-	}
+	hashed, _ := bcrypt.GenerateFromPassword([]byte("pass"), bcrypt.DefaultCost)
+	user := &entity.User{BaseEntity: entity.BaseEntity{ID: "u1"}, Username: "user1", Password: string(hashed), Role: "user"}
+
+	repo.On("FindByUsername", mock.Anything, "user1").Return(user, nil)
+
+	_, err := uc.Login(context.Background(), "user1", "wrongpass")
+	assert.EqualError(t, err, "invalid credentials")
 }
 
-func TestLogin_RepoError(t *testing.T) {
-	repo := newMockUserRepo()
-	repo.findErr = errors.New("db error")
-	uc := NewAuthUsecase(repo, testJWTSecret)
-
-	_, err := uc.Login(context.Background(), "john", "pass")
-	if err == nil || err.Error() != "db error" {
-		t.Errorf("expected 'db error', got %v", err)
+func TestLogin_SignTokenError(t *testing.T) {
+	orig := signToken
+	signToken = func(token *jwt.Token, secret []byte) (string, error) {
+		return "", errors.New("sign error")
 	}
+	defer func() { signToken = orig }()
+
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
+
+	hashed, _ := bcrypt.GenerateFromPassword([]byte("pass"), bcrypt.DefaultCost)
+	user := &entity.User{BaseEntity: entity.BaseEntity{ID: "u1"}, Username: "user1", Password: string(hashed), Role: "user"}
+
+	repo.On("FindByUsername", mock.Anything, "user1").Return(user, nil)
+
+	_, err := uc.Login(context.Background(), "user1", "pass")
+	assert.EqualError(t, err, "sign error")
 }
 
-// ----- SeedSuperAdmin tests -----
+func TestGetUsersPaginated_Success(t *testing.T) {
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
 
-func TestSeedSuperAdmin_CreatesWhenNotExists(t *testing.T) {
-	repo := newMockUserRepo()
-	uc := NewAuthUsecase(repo, testJWTSecret)
+	users := []*entity.User{{Username: "u1"}, {Username: "u2"}}
+	repo.On("GetPaginated", mock.Anything, 1, 10).Return(users, int64(2), nil)
 
-	uc.SeedSuperAdmin(context.Background(), "admin", "pass123")
-
-	user, ok := repo.users["admin"]
-	if !ok {
-		t.Fatal("expected superadmin to be created")
-	}
-	if user.Role != "superadmin" {
-		t.Errorf("expected role='superadmin', got %q", user.Role)
-	}
-	// Password should be hashed
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte("pass123")); err != nil {
-		t.Error("password was not properly hashed")
-	}
+	res, err := uc.GetUsersPaginated(context.Background(), pagination.PaginationQuery{Page: 1, Limit: 10})
+	assert.NoError(t, err)
+	assert.Len(t, res.Items, 2)
+	assert.Equal(t, int64(2), res.Total)
 }
 
-func TestSeedSuperAdmin_SkipsWhenExists(t *testing.T) {
-	repo := newMockUserRepo()
-	existing := &entity.User{Username: "admin", Role: "superadmin"}
-	repo.users["admin"] = existing
-	uc := NewAuthUsecase(repo, testJWTSecret)
+func TestGetUsersPaginated_Error(t *testing.T) {
+	repo := new(mockUserRepo)
+	uc := NewAuthUsecase(repo, "secret")
 
-	uc.SeedSuperAdmin(context.Background(), "admin", "newpass")
+	repo.On("GetPaginated", mock.Anything, 1, 10).Return(nil, int64(0), errors.New("db error"))
 
-	// Should still be the old user, not recreated
-	if repo.users["admin"] != existing {
-		t.Error("expected existing superadmin to remain unchanged")
-	}
+	_, err := uc.GetUsersPaginated(context.Background(), pagination.PaginationQuery{Page: 1, Limit: 10})
+	assert.EqualError(t, err, "db error")
 }

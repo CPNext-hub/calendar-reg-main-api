@@ -92,6 +92,7 @@ type FetchByCodeResponse struct {
 	Semester      int32                  `protobuf:"varint,7,opt,name=semester,proto3" json:"semester,omitempty"`
 	Year          int32                  `protobuf:"varint,8,opt,name=year,proto3" json:"year,omitempty"`
 	Sections      []*Section             `protobuf:"bytes,9,rep,name=sections,proto3" json:"sections,omitempty"`
+	Department    string                 `protobuf:"bytes,10,opt,name=department,proto3" json:"department,omitempty"` // e.g. "วิทยาการคอมพิวเตอร์"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -189,12 +190,19 @@ func (x *FetchByCodeResponse) GetSections() []*Section {
 	return nil
 }
 
+func (x *FetchByCodeResponse) GetDepartment() string {
+	if x != nil {
+		return x.Department
+	}
+	return ""
+}
+
 type Section struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Number        string                 `protobuf:"bytes,1,opt,name=number,proto3" json:"number,omitempty"`
 	Schedules     []*Schedule            `protobuf:"bytes,2,rep,name=schedules,proto3" json:"schedules,omitempty"`
 	Seats         int32                  `protobuf:"varint,3,opt,name=seats,proto3" json:"seats,omitempty"`
-	Instructor    string                 `protobuf:"bytes,4,opt,name=instructor,proto3" json:"instructor,omitempty"`
+	Instructor    []string               `protobuf:"bytes,4,rep,name=instructor,proto3" json:"instructor,omitempty"`
 	ExamDate      string                 `protobuf:"bytes,5,opt,name=exam_date,json=examDate,proto3" json:"exam_date,omitempty"`          // Thai format: "31 มี.ค. 2569 เวลา 13:00 - 16:00"
 	MidtermDate   string                 `protobuf:"bytes,6,opt,name=midterm_date,json=midtermDate,proto3" json:"midterm_date,omitempty"` // สอบกลางภาค
 	Note          string                 `protobuf:"bytes,7,opt,name=note,proto3" json:"note,omitempty"`                                  // หมายเหตุ e.g. "ผู้สอบไม่ผ่าน", "Closed"
@@ -256,11 +264,11 @@ func (x *Section) GetSeats() int32 {
 	return 0
 }
 
-func (x *Section) GetInstructor() string {
+func (x *Section) GetInstructor() []string {
 	if x != nil {
 		return x.Instructor
 	}
-	return ""
+	return nil
 }
 
 func (x *Section) GetExamDate() string {
@@ -381,7 +389,7 @@ const file_course_service_proto_rawDesc = "" +
 	"\x12FetchByCodeRequest\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x1a\n" +
 	"\bacadyear\x18\x02 \x01(\x05R\bacadyear\x12\x1a\n" +
-	"\bsemester\x18\x03 \x01(\x05R\bsemester\"\x92\x02\n" +
+	"\bsemester\x18\x03 \x01(\x05R\bsemester\"\xb2\x02\n" +
 	"\x13FetchByCodeResponse\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x17\n" +
 	"\aname_en\x18\x02 \x01(\tR\x06nameEn\x12\x17\n" +
@@ -391,13 +399,17 @@ const file_course_service_proto_rawDesc = "" +
 	"\fprerequisite\x18\x06 \x01(\tR\fprerequisite\x12\x1a\n" +
 	"\bsemester\x18\a \x01(\x05R\bsemester\x12\x12\n" +
 	"\x04year\x18\b \x01(\x05R\x04year\x12-\n" +
-	"\bsections\x18\t \x03(\v2\x11.coursepb.SectionR\bsections\"\xb2\x02\n" +
+	"\bsections\x18\t \x03(\v2\x11.coursepb.SectionR\bsections\x12\x1e\n" +
+	"\n" +
+	"department\x18\n" +
+	" \x01(\tR\n" +
+	"department\"\xb2\x02\n" +
 	"\aSection\x12\x16\n" +
 	"\x06number\x18\x01 \x01(\tR\x06number\x120\n" +
 	"\tschedules\x18\x02 \x03(\v2\x12.coursepb.ScheduleR\tschedules\x12\x14\n" +
 	"\x05seats\x18\x03 \x01(\x05R\x05seats\x12\x1e\n" +
 	"\n" +
-	"instructor\x18\x04 \x01(\tR\n" +
+	"instructor\x18\x04 \x03(\tR\n" +
 	"instructor\x12\x1b\n" +
 	"\texam_date\x18\x05 \x01(\tR\bexamDate\x12!\n" +
 	"\fmidterm_date\x18\x06 \x01(\tR\vmidtermDate\x12\x12\n" +

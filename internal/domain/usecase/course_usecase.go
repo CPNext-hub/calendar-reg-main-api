@@ -4,12 +4,20 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/entity"
 	"github.com/CPNext-hub/calendar-reg-main-api/internal/domain/repository"
 	"github.com/CPNext-hub/calendar-reg-main-api/pkg/pagination"
 	"github.com/CPNext-hub/calendar-reg-main-api/pkg/queue"
+)
+
+var (
+	// ErrCourseNotFound is returned when the external API confirms the course does not exist.
+	ErrCourseNotFound = errors.New("course not found")
+	// ErrCourseFetchPending is returned when a background fetch was enqueued but hasn't completed yet.
+	ErrCourseFetchPending = errors.New("course data is being fetched, please try again")
 )
 
 // CourseUsecase defines the business logic for courses.
@@ -58,6 +66,7 @@ func (u *courseUsecase) GetCoursesPaginated(ctx context.Context, pq pagination.P
 }
 
 func (u *courseUsecase) GetCourseByCode(ctx context.Context, code string, acadyear, semester int) (*entity.Course, error) {
+	code = strings.ToUpper(code)
 	course, err := u.repo.GetByKey(ctx, code, acadyear, semester)
 	if err != nil {
 		return nil, err
@@ -66,28 +75,29 @@ func (u *courseUsecase) GetCourseByCode(ctx context.Context, code string, acadye
 	if course == nil {
 		// Not in DB — enqueue a first-fetch job and wait up to 3 seconds.
 		if u.externalAPI == nil || u.refreshQueue == nil {
-			return nil, nil
+			return nil, ErrCourseNotFound
 		}
 
 		resultCh := make(chan queue.JobResult, 1)
 		if !u.refreshQueue.Enqueue(queue.RefreshJob{Code: code, Acadyear: acadyear, Semester: semester, IsNew: true, Result: resultCh}) {
-			return nil, nil
+			// Already in-flight — tell the client to try again.
+			return nil, ErrCourseFetchPending
 		}
 
 		select {
 		case res := <-resultCh:
 			if res.Err != nil {
 				log.Printf("external fetch failed for %s: %v", code, res.Err)
-				return nil, nil
+				return nil, ErrCourseNotFound
 			}
 			if c, ok := res.Data.(*entity.Course); ok {
 				return c, nil
 			}
-			return nil, nil
+			return nil, ErrCourseNotFound
 
 		case <-time.After(3 * time.Second):
-			log.Printf("external fetch for %s taking too long, returning nil", code)
-			return nil, nil
+			log.Printf("external fetch for %s taking too long, will complete in background", code)
+			return nil, ErrCourseFetchPending
 		}
 	}
 
@@ -138,6 +148,18 @@ func (u *courseUsecase) ProcessRefreshJob(job queue.RefreshJob) {
 		fetched.ID = existing.ID
 		fetched.Code = existing.Code
 		fetched.CreatedAt = existing.CreatedAt
+
+		// Preserve section IDs
+		for i, fetchedSec := range fetched.Sections {
+			for _, existingSec := range existing.Sections {
+				if fetchedSec.Number == existingSec.Number &&
+					fetchedSec.Campus == existingSec.Campus &&
+					fetchedSec.Program == existingSec.Program {
+					fetched.Sections[i].ID = existingSec.ID
+					break
+				}
+			}
+		}
 
 		if saveErr := u.repo.Update(context.Background(), fetched); saveErr != nil {
 			log.Printf("[worker] failed to update course %s: %v", job.Key(), saveErr)

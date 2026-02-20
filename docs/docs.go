@@ -314,6 +314,20 @@ const docTemplate = `{
                         "name": "code",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Academic Year",
+                        "name": "acadyear",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Semester",
+                        "name": "semester",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -322,6 +336,10 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/dto.CourseResponse"
                         }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
                     },
                     "404": {
                         "description": "Not Found",
@@ -357,6 +375,215 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
+        "/cronjobs": {
+            "get": {
+                "description": "Retrieve all cron jobs",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cronjobs"
+                ],
+                "summary": "Get all cron jobs",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dto.CronJobResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new cron job for scheduled course data refresh",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cronjobs"
+                ],
+                "summary": "Create a new cron job",
+                "parameters": [
+                    {
+                        "description": "CronJob Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateCronJobRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CronJobResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
+        "/cronjobs/{id}": {
+            "get": {
+                "description": "Retrieve a specific cron job by its ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cronjobs"
+                ],
+                "summary": "Get cron job by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "CronJob ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CronJobResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            },
+            "put": {
+                "description": "Update an existing cron job by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cronjobs"
+                ],
+                "summary": "Update cron job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "CronJob ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "CronJob Update Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateCronJobRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CronJobResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            },
+            "delete": {
+                "description": "Soft delete a cron job by ID",
+                "tags": [
+                    "cronjobs"
+                ],
+                "summary": "Delete cron job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "CronJob ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
+        "/cronjobs/{id}/trigger": {
+            "post": {
+                "description": "Manually trigger a cron job to run immediately",
+                "tags": [
+                    "cronjobs"
+                ],
+                "summary": "Trigger cron job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "CronJob ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {}
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {}
                     },
                     "500": {
@@ -495,6 +722,9 @@ const docTemplate = `{
                 "credits": {
                     "type": "string"
                 },
+                "department": {
+                    "type": "string"
+                },
                 "faculty": {
                     "type": "string"
                 },
@@ -508,9 +738,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "prerequisite": {
-                    "type": "string"
-                },
-                "program": {
                     "type": "string"
                 },
                 "sections": {
@@ -539,6 +766,9 @@ const docTemplate = `{
                 "credits": {
                     "type": "string"
                 },
+                "department": {
+                    "type": "string"
+                },
                 "faculty": {
                     "type": "string"
                 },
@@ -549,9 +779,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "prerequisite": {
-                    "type": "string"
-                },
-                "program": {
                     "type": "string"
                 },
                 "sections": {
@@ -565,6 +792,68 @@ const docTemplate = `{
                 },
                 "year": {
                     "type": "integer"
+                }
+            }
+        },
+        "dto.CreateCronJobRequest": {
+            "type": "object",
+            "properties": {
+                "acadyear": {
+                    "type": "integer"
+                },
+                "course_codes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "cron_expr": {
+                    "description": "e.g. \"0 */6 * * *\"",
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "semester": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.CronJobResponse": {
+            "type": "object",
+            "properties": {
+                "acadyear": {
+                    "type": "integer"
+                },
+                "course_codes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "cron_expr": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "semester": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
@@ -688,14 +977,38 @@ const docTemplate = `{
         "dto.SectionRequest": {
             "type": "object",
             "properties": {
+                "campus": {
+                    "type": "string"
+                },
                 "exam_date": {
                     "type": "string"
                 },
+                "id": {
+                    "type": "string"
+                },
                 "instructor": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "midterm_date": {
+                    "type": "string"
+                },
+                "note": {
                     "type": "string"
                 },
                 "number": {
                     "type": "string"
+                },
+                "program": {
+                    "type": "string"
+                },
+                "reserved_for": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "schedules": {
                     "type": "array",
@@ -711,17 +1024,44 @@ const docTemplate = `{
         "dto.SectionResponse": {
             "type": "object",
             "properties": {
+                "campus": {
+                    "type": "string"
+                },
                 "exam_end": {
                     "type": "string"
                 },
                 "exam_start": {
                     "type": "string"
                 },
+                "id": {
+                    "type": "string"
+                },
                 "instructor": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "midterm_end": {
+                    "type": "string"
+                },
+                "midterm_start": {
+                    "type": "string"
+                },
+                "note": {
                     "type": "string"
                 },
                 "number": {
                     "type": "string"
+                },
+                "program": {
+                    "type": "string"
+                },
+                "reserved_for": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "schedules": {
                     "type": "array",
@@ -730,6 +1070,32 @@ const docTemplate = `{
                     }
                 },
                 "seats": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.UpdateCronJobRequest": {
+            "type": "object",
+            "properties": {
+                "acadyear": {
+                    "type": "integer"
+                },
+                "course_codes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "cron_expr": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "semester": {
                     "type": "integer"
                 }
             }
@@ -757,10 +1123,16 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "pending": {
+                    "type": "integer"
+                },
                 "processed": {
                     "type": "integer"
                 },
                 "processing": {
+                    "type": "integer"
+                },
+                "workers": {
                     "type": "integer"
                 }
             }
