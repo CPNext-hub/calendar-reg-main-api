@@ -984,7 +984,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "instructor": {
-                    "type": "string"
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "midterm_date": {
                     "type": "string"
@@ -1028,7 +1031,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "instructor": {
-                    "type": "string"
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "midterm_end": {
                     "type": "string"

@@ -33,7 +33,7 @@ type sectionModel struct {
 	Number       string          `bson:"number"`
 	Schedules    []scheduleModel `bson:"schedules"`
 	Seats        int             `bson:"seats"`
-	Instructor   string          `bson:"instructor"`
+	Instructor   []string        `bson:"instructor"`
 	ExamStart    time.Time       `bson:"exam_start,omitempty"`
 	ExamEnd      time.Time       `bson:"exam_end,omitempty"`
 	MidtermStart time.Time       `bson:"midterm_start,omitempty"`

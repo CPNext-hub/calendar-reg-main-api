@@ -29,7 +29,7 @@ var courses = map[string]*pb.FetchByCodeResponse{
 			{
 				Number:      "02",
 				Seats:       40,
-				Instructor:  "Assoc. Prof. Dr. Chitsutha Soomlek",
+				Instructor:  []string{"Assoc. Prof. Dr. Chitsutha Soomlek"},
 				ExamDate:    "31 มี.ค. 2567 เวลา 13:00 - 16:00",
 				MidtermDate: "15 ก.พ. 2567 เวลา 09:00 - 12:00",
 				Note:        "",
@@ -57,7 +57,7 @@ var courses = map[string]*pb.FetchByCodeResponse{
 			{
 				Number:      "01",
 				Seats:       60,
-				Instructor:  "Dr. Somchai Prasit",
+				Instructor:  []string{"Dr. Somchai Prasit"},
 				ExamDate:    "28 มี.ค. 2567 เวลา 09:00 - 12:00",
 				MidtermDate: "10 ก.พ. 2567 เวลา 09:00 - 12:00",
 				Note:        "ผู้สอบไม่ผ่าน",
@@ -85,7 +85,7 @@ var courses = map[string]*pb.FetchByCodeResponse{
 			{
 				Number:      "01",
 				Seats:       45,
-				Instructor:  "Asst. Prof. Dr. Wanida Kanarkard",
+				Instructor:  []string{"Asst. Prof. Dr. Wanida Kanarkard"},
 				ExamDate:    "30 มี.ค. 2567 เวลา 09:00 - 12:00",
 				MidtermDate: "12 ก.พ. 2567 เวลา 13:00 - 16:00",
 				Note:        "Closed",

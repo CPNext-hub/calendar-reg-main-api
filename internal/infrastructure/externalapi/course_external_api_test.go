@@ -43,7 +43,7 @@ func TestFetchByCode_Success(t *testing.T) {
 				{
 					Number:     "01",
 					Seats:      40,
-					Instructor: "ผศ.ดร.ชิตสุธา สุ่มเล็ก",
+					Instructor: []string{"ผศ.ดร.ชิตสุธา สุ่มเล็ก"},
 					ExamDate:   "31 มี.ค. 2569 เวลา 13:00 - 16:00",
 					Note:       "หมายเหตุ",
 					Campus:     "ขอนแก่น",
@@ -106,8 +106,8 @@ func TestFetchByCode_Success(t *testing.T) {
 	if sec.Seats != 40 {
 		t.Errorf("expected seats 40, got %d", sec.Seats)
 	}
-	if sec.Instructor != "ผศ.ดร.ชิตสุธา สุ่มเล็ก" {
-		t.Errorf("expected instructor, got %s", sec.Instructor)
+	if len(sec.Instructor) != 1 || sec.Instructor[0] != "ผศ.ดร.ชิตสุธา สุ่มเล็ก" {
+		t.Errorf("expected instructor [ผศ.ดร.ชิตสุธา สุ่มเล็ก], got %v", sec.Instructor)
 	}
 	if sec.Campus != "ขอนแก่น" {
 		t.Errorf("expected campus 'ขอนแก่น', got %s", sec.Campus)

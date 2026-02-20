@@ -30,7 +30,7 @@ type Section struct {
 	Number       string     // e.g., "01"
 	Schedules    []Schedule // multiple schedule slots per section
 	Seats        int        // e.g., 40
-	Instructor   string     // e.g., "ผศ.ดร.ชิตสุธา สุ่มเล็ก"
+	Instructor   []string   // e.g., ["ผศ.ดร.ชิตสุธา สุ่มเล็ก"]
 	ExamStart    time.Time  // e.g., 2026-03-31 13:00:00
 	ExamEnd      time.Time  // e.g., 2026-03-31 16:00:00
 	MidtermStart time.Time  // สอบกลางภาค start

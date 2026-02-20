@@ -31,7 +31,7 @@ type SectionRequest struct {
 	Number      string            `json:"number"`
 	Schedules   []ScheduleRequest `json:"schedules"`
 	Seats       int               `json:"seats"`
-	Instructor  string            `json:"instructor"`
+	Instructor  []string          `json:"instructor"`
 	ExamDate    string            `json:"exam_date,omitempty"`
 	MidtermDate string            `json:"midterm_date,omitempty"`
 	Note        string            `json:"note,omitempty"`
@@ -154,7 +154,7 @@ type SectionResponse struct {
 	Number       string             `json:"number"`
 	Schedules    []ScheduleResponse `json:"schedules"`
 	Seats        int                `json:"seats"`
-	Instructor   string             `json:"instructor"`
+	Instructor   []string           `json:"instructor"`
 	ExamStart    string             `json:"exam_start,omitempty"`
 	ExamEnd      string             `json:"exam_end,omitempty"`
 	MidtermStart string             `json:"midterm_start,omitempty"`

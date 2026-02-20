@@ -179,7 +179,9 @@ definitions:
       exam_date:
         type: string
       instructor:
-        type: string
+        items:
+          type: string
+        type: array
       midterm_date:
         type: string
       note:
@@ -208,7 +210,9 @@ definitions:
       exam_start:
         type: string
       instructor:
-        type: string
+        items:
+          type: string
+        type: array
       midterm_end:
         type: string
       midterm_start:

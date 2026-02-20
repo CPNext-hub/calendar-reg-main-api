@@ -202,7 +202,7 @@ type Section struct {
 	Number        string                 `protobuf:"bytes,1,opt,name=number,proto3" json:"number,omitempty"`
 	Schedules     []*Schedule            `protobuf:"bytes,2,rep,name=schedules,proto3" json:"schedules,omitempty"`
 	Seats         int32                  `protobuf:"varint,3,opt,name=seats,proto3" json:"seats,omitempty"`
-	Instructor    string                 `protobuf:"bytes,4,opt,name=instructor,proto3" json:"instructor,omitempty"`
+	Instructor    []string               `protobuf:"bytes,4,rep,name=instructor,proto3" json:"instructor,omitempty"`
 	ExamDate      string                 `protobuf:"bytes,5,opt,name=exam_date,json=examDate,proto3" json:"exam_date,omitempty"`          // Thai format: "31 มี.ค. 2569 เวลา 13:00 - 16:00"
 	MidtermDate   string                 `protobuf:"bytes,6,opt,name=midterm_date,json=midtermDate,proto3" json:"midterm_date,omitempty"` // สอบกลางภาค
 	Note          string                 `protobuf:"bytes,7,opt,name=note,proto3" json:"note,omitempty"`                                  // หมายเหตุ e.g. "ผู้สอบไม่ผ่าน", "Closed"
@@ -264,11 +264,11 @@ func (x *Section) GetSeats() int32 {
 	return 0
 }
 
-func (x *Section) GetInstructor() string {
+func (x *Section) GetInstructor() []string {
 	if x != nil {
 		return x.Instructor
 	}
-	return ""
+	return nil
 }
 
 func (x *Section) GetExamDate() string {
@@ -409,7 +409,7 @@ const file_course_service_proto_rawDesc = "" +
 	"\tschedules\x18\x02 \x03(\v2\x12.coursepb.ScheduleR\tschedules\x12\x14\n" +
 	"\x05seats\x18\x03 \x01(\x05R\x05seats\x12\x1e\n" +
 	"\n" +
-	"instructor\x18\x04 \x01(\tR\n" +
+	"instructor\x18\x04 \x03(\tR\n" +
 	"instructor\x12\x1b\n" +
 	"\texam_date\x18\x05 \x01(\tR\bexamDate\x12!\n" +
 	"\fmidterm_date\x18\x06 \x01(\tR\vmidtermDate\x12\x12\n" +
