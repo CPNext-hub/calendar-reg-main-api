@@ -149,6 +149,18 @@ func (u *courseUsecase) ProcessRefreshJob(job queue.RefreshJob) {
 		fetched.Code = existing.Code
 		fetched.CreatedAt = existing.CreatedAt
 
+		// Preserve section IDs
+		for i, fetchedSec := range fetched.Sections {
+			for _, existingSec := range existing.Sections {
+				if fetchedSec.Number == existingSec.Number &&
+					fetchedSec.Campus == existingSec.Campus &&
+					fetchedSec.Program == existingSec.Program {
+					fetched.Sections[i].ID = existingSec.ID
+					break
+				}
+			}
+		}
+
 		if saveErr := u.repo.Update(context.Background(), fetched); saveErr != nil {
 			log.Printf("[worker] failed to update course %s: %v", job.Key(), saveErr)
 			return

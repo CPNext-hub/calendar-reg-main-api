@@ -30,6 +30,7 @@ type courseModel struct {
 }
 
 type sectionModel struct {
+	ID           bson.ObjectID   `bson:"_id"`
 	Number       string          `bson:"number"`
 	Schedules    []scheduleModel `bson:"schedules"`
 	Seats        int             `bson:"seats"`
@@ -77,6 +78,7 @@ func (m *courseModel) toEntity() *entity.Course {
 			}
 		}
 		sections[i] = entity.Section{
+			ID:           s.ID.Hex(),
 			Number:       s.Number,
 			Schedules:    schedules,
 			Seats:        s.Seats,
@@ -131,7 +133,21 @@ func toCourseModel(e *entity.Course) *courseModel {
 				Type:      sc.Type,
 			}
 		}
+
+		var secID bson.ObjectID
+		if s.ID != "" {
+			oid, err := bson.ObjectIDFromHex(s.ID)
+			if err == nil {
+				secID = oid
+			} else {
+				secID = bson.NewObjectID()
+			}
+		} else {
+			secID = bson.NewObjectID()
+		}
+
 		sections[i] = sectionModel{
+			ID:           secID,
 			Number:       s.Number,
 			Schedules:    schedules,
 			Seats:        s.Seats,

@@ -28,6 +28,7 @@ type CreateCourseRequest struct {
 
 // SectionRequest represents a section in a create/update request.
 type SectionRequest struct {
+	ID          string            `json:"id,omitempty"`
 	Number      string            `json:"number"`
 	Schedules   []ScheduleRequest `json:"schedules"`
 	Seats       int               `json:"seats"`
@@ -102,6 +103,7 @@ func (r *CreateCourseRequest) ToEntity() *entity.Course {
 		}
 
 		sections[i] = entity.Section{
+			ID:           s.ID,
 			Number:       s.Number,
 			Schedules:    schedules,
 			Seats:        s.Seats,
@@ -151,6 +153,7 @@ type CourseResponse struct {
 
 // SectionResponse represents a section in the response.
 type SectionResponse struct {
+	ID           string             `json:"id"`
 	Number       string             `json:"number"`
 	Schedules    []ScheduleResponse `json:"schedules"`
 	Seats        int                `json:"seats"`
@@ -210,6 +213,7 @@ func ToCourseResponse(c *entity.Course) *CourseResponse {
 		}
 
 		sections[i] = SectionResponse{
+			ID:           s.ID,
 			Number:       s.Number,
 			Schedules:    schedules,
 			Seats:        s.Seats,

@@ -27,6 +27,7 @@ func (c *Course) Key() string {
 
 // Section represents a course section with schedule and instructor info.
 type Section struct {
+	ID           string     // Unique identifier
 	Number       string     // e.g., "01"
 	Schedules    []Schedule // multiple schedule slots per section
 	Seats        int        // e.g., 40
