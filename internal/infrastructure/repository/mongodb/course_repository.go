@@ -35,10 +35,10 @@ type sectionModel struct {
 	Schedules    []scheduleModel `bson:"schedules"`
 	Seats        int             `bson:"seats"`
 	Instructor   []string        `bson:"instructor"`
-	ExamStart    time.Time       `bson:"exam_start,omitempty"`
-	ExamEnd      time.Time       `bson:"exam_end,omitempty"`
-	MidtermStart time.Time       `bson:"midterm_start,omitempty"`
-	MidtermEnd   time.Time       `bson:"midterm_end,omitempty"`
+	ExamStart    string          `bson:"exam_start,omitempty"`
+	ExamEnd      string          `bson:"exam_end,omitempty"`
+	MidtermStart string          `bson:"midterm_start,omitempty"`
+	MidtermEnd   string          `bson:"midterm_end,omitempty"`
 	Note         string          `bson:"note,omitempty"`
 	ReservedFor  []string        `bson:"reserved_for,omitempty"`
 	Campus       string          `bson:"campus,omitempty"`
@@ -46,11 +46,11 @@ type sectionModel struct {
 }
 
 type scheduleModel struct {
-	Day       string    `bson:"day"`
-	StartTime time.Time `bson:"start_time"`
-	EndTime   time.Time `bson:"end_time"`
-	Room      string    `bson:"room"`
-	Type      string    `bson:"type"`
+	Day       string `bson:"day"`
+	StartTime string `bson:"start_time"`
+	EndTime   string `bson:"end_time"`
+	Room      string `bson:"room"`
+	Type      string `bson:"type"`
 }
 
 // compositeFilter builds the composite key filter for lookups.

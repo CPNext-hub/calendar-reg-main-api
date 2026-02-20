@@ -44,31 +44,23 @@ func TestToEntity(t *testing.T) {
 
 	// Verify Schedule Time Split
 	schedule := section.Schedules[0]
-	expectedStart, _ := time.Parse("15:04", "13:00")
-	expectedEnd, _ := time.Parse("15:04", "15:00")
-	assert.Equal(t, expectedStart.Hour(), schedule.StartTime.Hour())
-	assert.Equal(t, expectedStart.Minute(), schedule.StartTime.Minute())
-	assert.Equal(t, expectedEnd.Hour(), schedule.EndTime.Hour())
-	assert.Equal(t, expectedEnd.Minute(), schedule.EndTime.Minute())
+	assert.Equal(t, "13:00", schedule.StartTime)
+	assert.Equal(t, "15:00", schedule.EndTime)
 
 	// Verify ExamDate Parsing
 	// 2569 - 543 = 2026
 	// 31 March
 	// 13:00 - 16:00
-	expectedExamStart := time.Date(2026, time.March, 31, 13, 0, 0, 0, time.Local)
-	expectedExamEnd := time.Date(2026, time.March, 31, 16, 0, 0, 0, time.Local)
+	expectedExamStart := "2026-03-31 13:00:00"
+	expectedExamEnd := "2026-03-31 16:00:00"
 
-	assert.Equal(t, expectedExamStart.Year(), section.ExamStart.Year())
-	assert.Equal(t, expectedExamStart.Month(), section.ExamStart.Month())
-	assert.Equal(t, expectedExamStart.Day(), section.ExamStart.Day())
-	assert.Equal(t, expectedExamStart.Hour(), section.ExamStart.Hour())
-
-	assert.Equal(t, expectedExamEnd.Hour(), section.ExamEnd.Hour())
+	assert.Equal(t, expectedExamStart, section.ExamStart)
+	assert.Equal(t, expectedExamEnd, section.ExamEnd)
 	assert.Equal(t, []string{"Students who failed"}, section.ReservedFor)
 
 	// Verify MidtermDate Parsing
-	expectedMidtermStart := time.Date(2026, time.February, 15, 9, 0, 0, 0, time.Local)
-	expectedMidtermEnd := time.Date(2026, time.February, 15, 12, 0, 0, 0, time.Local)
+	expectedMidtermStart := "2026-02-15 09:00:00"
+	expectedMidtermEnd := "2026-02-15 12:00:00"
 	assert.Equal(t, expectedMidtermStart, section.MidtermStart)
 	assert.Equal(t, expectedMidtermEnd, section.MidtermEnd)
 }
@@ -93,18 +85,19 @@ func TestToEntity_InvalidTimes(t *testing.T) {
 	}
 	entityCourse := req.ToEntity()
 	assert.NotNil(t, entityCourse)
-	assert.True(t, entityCourse.Sections[0].Schedules[0].StartTime.IsZero())
-	assert.True(t, entityCourse.Sections[0].Schedules[1].StartTime.IsZero())
-	assert.True(t, entityCourse.Sections[0].ExamStart.IsZero())
-	assert.True(t, entityCourse.Sections[0].MidtermStart.IsZero())
+	assert.Equal(t, "", entityCourse.Sections[0].Schedules[0].StartTime)
+	assert.Equal(t, "13:00", entityCourse.Sections[0].Schedules[1].StartTime)
+	assert.Equal(t, "Invalid", entityCourse.Sections[0].Schedules[1].EndTime)
+	assert.Equal(t, "", entityCourse.Sections[0].ExamStart)
+	assert.Equal(t, "", entityCourse.Sections[0].MidtermStart)
 }
 
 func TestToCourseResponse(t *testing.T) {
-	start, _ := time.Parse("15:04", "09:00")
-	end, _ := time.Parse("15:04", "12:00")
+	start := "09:00"
+	end := "12:00"
 
-	examStart := time.Date(2026, time.March, 31, 13, 0, 0, 0, time.Local)
-	examEnd := time.Date(2026, time.March, 31, 16, 0, 0, 0, time.Local)
+	examStart := "2026-03-31 13:00:00"
+	examEnd := "2026-03-31 16:00:00"
 
 	// Mock UpdatedAt
 	updatedAt := time.Date(2026, time.February, 17, 14, 0, 0, 0, time.Local)
@@ -160,8 +153,8 @@ func TestToCourseResponse_Nil(t *testing.T) {
 }
 
 func TestToCourseResponse_Midterm(t *testing.T) {
-	midtermStart := time.Date(2026, time.February, 15, 9, 0, 0, 0, time.Local)
-	midtermEnd := time.Date(2026, time.February, 15, 12, 0, 0, 0, time.Local)
+	midtermStart := "2026-02-15 09:00:00"
+	midtermEnd := "2026-02-15 12:00:00"
 
 	entityCourse := &entity.Course{
 		Sections: []entity.Section{

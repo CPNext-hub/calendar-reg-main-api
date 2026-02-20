@@ -119,10 +119,10 @@ func TestFetchByCode_Success(t *testing.T) {
 		t.Errorf("expected note, got %s", sec.Note)
 	}
 	// Exam should be parsed
-	if sec.ExamStart.IsZero() {
+	if sec.ExamStart == "" {
 		t.Error("expected ExamStart to be parsed")
 	}
-	if sec.ExamEnd.IsZero() {
+	if sec.ExamEnd == "" {
 		t.Error("expected ExamEnd to be parsed")
 	}
 
@@ -140,10 +140,10 @@ func TestFetchByCode_Success(t *testing.T) {
 		t.Errorf("expected type 'C', got %s", sched.Type)
 	}
 	// StartTime should be 13:00
-	if sched.StartTime.Hour() != 13 || sched.StartTime.Minute() != 0 {
+	if sched.StartTime != "13:00" {
 		t.Errorf("expected start 13:00, got %v", sched.StartTime)
 	}
-	if sched.EndTime.Hour() != 15 || sched.EndTime.Minute() != 0 {
+	if sched.EndTime != "15:00" {
 		t.Errorf("expected end 15:00, got %v", sched.EndTime)
 	}
 }
@@ -182,11 +182,11 @@ func TestProtoToCourse_InvalidScheduleTime(t *testing.T) {
 	}
 	sched := course.Sections[0].Schedules[0]
 	// time should remain zero when parsing fails
-	if !sched.StartTime.IsZero() {
-		t.Error("expected zero StartTime for invalid time")
+	if sched.StartTime != "" {
+		t.Error("expected empty StartTime for invalid time")
 	}
-	if !sched.EndTime.IsZero() {
-		t.Error("expected zero EndTime for invalid time")
+	if sched.EndTime != "" {
+		t.Error("expected empty EndTime for invalid time")
 	}
 }
 
@@ -203,8 +203,8 @@ func TestProtoToCourse_BadStartTime(t *testing.T) {
 
 	course := protoToCourse(resp)
 	sched := course.Sections[0].Schedules[0]
-	if !sched.StartTime.IsZero() {
-		t.Error("expected zero StartTime for bad start time")
+	if sched.StartTime != "XX:XX" {
+		t.Error("expected 'XX:XX' for bad start time since it's just a string split now")
 	}
 }
 
@@ -220,11 +220,11 @@ func TestProtoToCourse_EmptyExamAndMidterm(t *testing.T) {
 
 	course := protoToCourse(resp)
 	sec := course.Sections[0]
-	if !sec.ExamStart.IsZero() {
-		t.Error("expected zero ExamStart for empty exam date")
+	if sec.ExamStart != "" {
+		t.Error("expected empty ExamStart for empty exam date")
 	}
-	if !sec.MidtermStart.IsZero() {
-		t.Error("expected zero MidtermStart for empty midterm date")
+	if sec.MidtermStart != "" {
+		t.Error("expected empty MidtermStart for empty midterm date")
 	}
 }
 
@@ -240,8 +240,8 @@ func TestProtoToCourse_InvalidExamDate(t *testing.T) {
 	course := protoToCourse(resp)
 	sec := course.Sections[0]
 	// Should remain zero when parsing fails
-	if !sec.ExamStart.IsZero() {
-		t.Error("expected zero ExamStart for invalid exam date")
+	if sec.ExamStart != "" {
+		t.Error("expected empty ExamStart for invalid exam date")
 	}
 }
 
@@ -256,8 +256,8 @@ func TestProtoToCourse_InvalidMidtermDate(t *testing.T) {
 
 	course := protoToCourse(resp)
 	sec := course.Sections[0]
-	if !sec.MidtermStart.IsZero() {
-		t.Error("expected zero MidtermStart for invalid midterm date")
+	if sec.MidtermStart != "" {
+		t.Error("expected empty MidtermStart for invalid midterm date")
 	}
 }
 
@@ -272,10 +272,10 @@ func TestProtoToCourse_ValidMidterm(t *testing.T) {
 
 	course := protoToCourse(resp)
 	sec := course.Sections[0]
-	if sec.MidtermStart.IsZero() {
+	if sec.MidtermStart == "" {
 		t.Error("expected MidtermStart to be parsed")
 	}
-	if sec.MidtermEnd.IsZero() {
+	if sec.MidtermEnd == "" {
 		t.Error("expected MidtermEnd to be parsed")
 	}
 }

@@ -2,7 +2,6 @@ package entity
 
 import (
 	"fmt"
-	"time"
 )
 
 // Course represents a university course.
@@ -32,10 +31,10 @@ type Section struct {
 	Schedules    []Schedule // multiple schedule slots per section
 	Seats        int        // e.g., 40
 	Instructor   []string   // e.g., ["ผศ.ดร.ชิตสุธา สุ่มเล็ก"]
-	ExamStart    time.Time  // e.g., 2026-03-31 13:00:00
-	ExamEnd      time.Time  // e.g., 2026-03-31 16:00:00
-	MidtermStart time.Time  // สอบกลางภาค start
-	MidtermEnd   time.Time  // สอบกลางภาค end
+	ExamStart    string     // e.g., "2026-03-31 13:00:00"
+	ExamEnd      string     // e.g., "2026-03-31 16:00:00"
+	MidtermStart string     // สอบกลางภาค start
+	MidtermEnd   string     // สอบกลางภาค end
 	Note         string     // หมายเหตุ e.g., "ผู้สอบไม่ผ่าน", "Closed"
 	ReservedFor  []string   // สำรองสำหรับ e.g., ["ผู้ที่สอบไม่ผ่าน 50-49-1"]
 	Campus       string     // e.g., "ขอนแก่น", "หนองคาย"
@@ -44,9 +43,9 @@ type Section struct {
 
 // Schedule represents a single class meeting (day + time + room).
 type Schedule struct {
-	Day       string    // e.g., "จันทร์"
-	StartTime time.Time // e.g., 13:00 parsed from "13:00-15:00"
-	EndTime   time.Time // e.g., 15:00 parsed from "13:00-15:00"
-	Room      string    // e.g., "CP9 CP9127"
-	Type      string    // e.g., "C" (lecture)
+	Day       string // e.g., "จันทร์"
+	StartTime string // e.g., "13:00"
+	EndTime   string // e.g., "15:00"
+	Room      string // e.g., "CP9 CP9127"
+	Type      string // e.g., "C" (lecture)
 }

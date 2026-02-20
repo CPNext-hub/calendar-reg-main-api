@@ -45,45 +45,39 @@ func protoToCourse(resp *pb.FetchByCodeResponse) *entity.Course {
 	for i, s := range resp.Sections {
 		schedules := make([]entity.Schedule, len(s.Schedules))
 		for j, sc := range s.Schedules {
-			var startTime, endTime time.Time
+			var startTimeStr, endTimeStr string
 			parts := strings.Split(sc.Time, "-")
 			if len(parts) == 2 {
-				st, err1 := time.Parse("15:04", strings.TrimSpace(parts[0]))
-				et, err2 := time.Parse("15:04", strings.TrimSpace(parts[1]))
-				if err1 == nil && err2 == nil {
-					startTime = st
-					endTime = et
-				} else {
-					log.Printf("Error parsing time for schedule: %v, %v", err1, err2)
-				}
+				startTimeStr = strings.TrimSpace(parts[0])
+				endTimeStr = strings.TrimSpace(parts[1])
 			}
 
 			schedules[j] = entity.Schedule{
 				Day:       sc.Day,
-				StartTime: startTime,
-				EndTime:   endTime,
+				StartTime: startTimeStr,
+				EndTime:   endTimeStr,
 				Room:      sc.Room,
 				Type:      sc.Type,
 			}
 		}
 
-		var examStart, examEnd time.Time
+		var examStartStr, examEndStr string
 		if s.ExamDate != "" {
 			es, ee, err := parseThaiExamDate(s.ExamDate)
 			if err == nil {
-				examStart = es
-				examEnd = ee
+				examStartStr = es
+				examEndStr = ee
 			} else {
 				log.Printf("Error parsing exam date: %v", err)
 			}
 		}
 
-		var midtermStart, midtermEnd time.Time
+		var midtermStartStr, midtermEndStr string
 		if s.MidtermDate != "" {
 			ms, me, err := parseThaiExamDate(s.MidtermDate)
 			if err == nil {
-				midtermStart = ms
-				midtermEnd = me
+				midtermStartStr = ms
+				midtermEndStr = me
 			} else {
 				log.Printf("Error parsing midterm date: %v", err)
 			}
@@ -94,10 +88,10 @@ func protoToCourse(resp *pb.FetchByCodeResponse) *entity.Course {
 			Schedules:    schedules,
 			Seats:        int(s.Seats),
 			Instructor:   s.Instructor,
-			ExamStart:    examStart,
-			ExamEnd:      examEnd,
-			MidtermStart: midtermStart,
-			MidtermEnd:   midtermEnd,
+			ExamStart:    examStartStr,
+			ExamEnd:      examEndStr,
+			MidtermStart: midtermStartStr,
+			MidtermEnd:   midtermEndStr,
 			Note:         s.Note,
 			ReservedFor:  s.ReservedFor,
 			Campus:       s.Campus,

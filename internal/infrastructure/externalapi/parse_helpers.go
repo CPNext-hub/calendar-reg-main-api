@@ -8,12 +8,12 @@ import (
 )
 
 // parseThaiExamDate parses strings like "31 มี.ค. 2569 เวลา 13:00 - 16:00"
-func parseThaiExamDate(dateStr string) (time.Time, time.Time, error) {
+func parseThaiExamDate(dateStr string) (string, string, error) {
 	dateStr = strings.TrimSpace(dateStr)
 
 	parts := strings.Split(dateStr, " เวลา ")
 	if len(parts) != 2 {
-		return time.Time{}, time.Time{}, fmt.Errorf("invalid format: missing ' เวลา ' separator")
+		return "", "", fmt.Errorf("invalid format: missing ' เวลา ' separator")
 	}
 
 	datePart := strings.TrimSpace(parts[0])
@@ -21,29 +21,29 @@ func parseThaiExamDate(dateStr string) (time.Time, time.Time, error) {
 
 	dateFields := strings.Fields(datePart)
 	if len(dateFields) != 3 {
-		return time.Time{}, time.Time{}, fmt.Errorf("invalid date format")
+		return "", "", fmt.Errorf("invalid date format")
 	}
 
 	day, err := strconv.Atoi(dateFields[0])
 	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("invalid day: %v", err)
+		return "", "", fmt.Errorf("invalid day: %v", err)
 	}
 
 	monthStr := dateFields[1]
 	yearBE, err := strconv.Atoi(dateFields[2])
 	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("invalid year: %v", err)
+		return "", "", fmt.Errorf("invalid year: %v", err)
 	}
 	yearCE := yearBE - 543
 
 	month := parseThaiMonth(monthStr)
 	if month == 0 {
-		return time.Time{}, time.Time{}, fmt.Errorf("invalid month: %s", monthStr)
+		return "", "", fmt.Errorf("invalid month: %s", monthStr)
 	}
 
 	times := strings.Split(timePart, "-")
 	if len(times) != 2 {
-		return time.Time{}, time.Time{}, fmt.Errorf("invalid time range format")
+		return "", "", fmt.Errorf("invalid time range format")
 	}
 
 	startStr := strings.TrimSpace(times[0])
@@ -51,15 +51,15 @@ func parseThaiExamDate(dateStr string) (time.Time, time.Time, error) {
 
 	startT, err := time.Parse("15:04", startStr)
 	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("invalid start time: %v", err)
+		return "", "", fmt.Errorf("invalid start time: %v", err)
 	}
 	endT, err := time.Parse("15:04", endStr)
 	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("invalid end time: %v", err)
+		return "", "", fmt.Errorf("invalid end time: %v", err)
 	}
 
-	examStart := time.Date(yearCE, month, day, startT.Hour(), startT.Minute(), 0, 0, time.Local)
-	examEnd := time.Date(yearCE, month, day, endT.Hour(), endT.Minute(), 0, 0, time.Local)
+	examStart := fmt.Sprintf("%04d-%02d-%02d %02d:%02d:00", yearCE, month, day, startT.Hour(), startT.Minute())
+	examEnd := fmt.Sprintf("%04d-%02d-%02d %02d:%02d:00", yearCE, month, day, endT.Hour(), endT.Minute())
 
 	return examStart, examEnd, nil
 }

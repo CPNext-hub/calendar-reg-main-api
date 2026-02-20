@@ -13,24 +13,14 @@ func TestParseThaiExamDate_ValidDate(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// 2569 BE = 2026 CE
-	if start.Year() != 2026 {
-		t.Errorf("expected year 2026, got %d", start.Year())
+	expectedStart := "2026-03-31 13:00:00"
+	expectedEnd := "2026-03-31 16:00:00"
+
+	if start != expectedStart {
+		t.Errorf("expected start %s, got %s", expectedStart, start)
 	}
-	if start.Month() != time.March {
-		t.Errorf("expected March, got %v", start.Month())
-	}
-	if start.Day() != 31 {
-		t.Errorf("expected day 31, got %d", start.Day())
-	}
-	if start.Hour() != 13 || start.Minute() != 0 {
-		t.Errorf("expected start 13:00, got %02d:%02d", start.Hour(), start.Minute())
-	}
-	if end.Hour() != 16 || end.Minute() != 0 {
-		t.Errorf("expected end 16:00, got %02d:%02d", end.Hour(), end.Minute())
-	}
-	if end.Year() != start.Year() || end.Month() != start.Month() || end.Day() != start.Day() {
-		t.Error("expected start and end to be on the same date")
+	if end != expectedEnd {
+		t.Errorf("expected end %s, got %s", expectedEnd, end)
 	}
 }
 
@@ -96,12 +86,14 @@ func TestParseThaiExamDate_WithWhitespace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// 2570 BE = 2027 CE
-	if start.Year() != 2027 || start.Month() != time.February || start.Day() != 15 {
-		t.Errorf("expected 2027-02-15, got %v", start)
+	expectedStart := "2027-02-15 09:00:00"
+	expectedEnd := "2027-02-15 12:00:00"
+
+	if start != expectedStart {
+		t.Errorf("expected start %s, got %s", expectedStart, start)
 	}
-	if end.Hour() != 12 {
-		t.Errorf("expected end hour 12, got %d", end.Hour())
+	if end != expectedEnd {
+		t.Errorf("expected end %s, got %s", expectedEnd, end)
 	}
 }
 
