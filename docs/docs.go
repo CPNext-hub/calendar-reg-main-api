@@ -983,6 +983,9 @@ const docTemplate = `{
                 "exam_date": {
                     "type": "string"
                 },
+                "id": {
+                    "type": "string"
+                },
                 "instructor": {
                     "type": "array",
                     "items": {
@@ -1028,6 +1031,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "exam_start": {
+                    "type": "string"
+                },
+                "id": {
                     "type": "string"
                 },
                 "instructor": {

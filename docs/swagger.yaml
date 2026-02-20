@@ -178,6 +178,8 @@ definitions:
         type: string
       exam_date:
         type: string
+      id:
+        type: string
       instructor:
         items:
           type: string
@@ -208,6 +210,8 @@ definitions:
       exam_end:
         type: string
       exam_start:
+        type: string
+      id:
         type: string
       instructor:
         items:
