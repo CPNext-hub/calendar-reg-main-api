@@ -141,9 +141,11 @@ func toCourseModel(e *entity.Course) *courseModel {
 				secID = oid
 			} else {
 				secID = bson.NewObjectID()
+				e.Sections[i].ID = secID.Hex()
 			}
 		} else {
 			secID = bson.NewObjectID()
+			e.Sections[i].ID = secID.Hex()
 		}
 
 		sections[i] = sectionModel{

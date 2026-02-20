@@ -45,7 +45,7 @@ func TestFetchByCode_Success(t *testing.T) {
 					Seats:      40,
 					Instructor: []string{"ผศ.ดร.ชิตสุธา สุ่มเล็ก"},
 					ExamDate:   "31 มี.ค. 2569 เวลา 13:00 - 16:00",
-					Note:       "หมายเหตุ",
+					Note:       "Closed",
 					Campus:     "ขอนแก่น",
 					Program:    "ปริญญาตรี ภาคปกติ",
 					Schedules: []*pb.Schedule{
@@ -115,8 +115,8 @@ func TestFetchByCode_Success(t *testing.T) {
 	if sec.Program != "ปริญญาตรี ภาคปกติ" {
 		t.Errorf("expected program, got %s", sec.Program)
 	}
-	if sec.Note != "หมายเหตุ" {
-		t.Errorf("expected note, got %s", sec.Note)
+	if sec.Note != "Closed" {
+		t.Errorf("expected note 'Closed', got %s", sec.Note)
 	}
 	// Exam should be parsed
 	if sec.ExamStart == "" {
