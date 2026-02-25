@@ -26,6 +26,7 @@ type courseModel struct {
 	Prerequisite string         `bson:"prerequisite,omitempty"`
 	Semester     int            `bson:"semester"`
 	Year         int            `bson:"year"`
+	Tag          string         `bson:"tag,omitempty"`
 	Sections     []sectionModel `bson:"sections"`
 }
 
@@ -115,6 +116,7 @@ func (m *courseModel) toEntity() *entity.Course {
 		Prerequisite: m.Prerequisite,
 		Semester:     m.Semester,
 		Year:         m.Year,
+		Tag:          entity.CourseTag(m.Tag),
 		Sections:     sections,
 	}
 }
@@ -175,6 +177,7 @@ func toCourseModel(e *entity.Course) *courseModel {
 		Prerequisite: e.Prerequisite,
 		Semester:     e.Semester,
 		Year:         e.Year,
+		Tag:          string(e.Tag),
 		Sections:     sections,
 	}
 	m.CreatedAt = e.CreatedAt
@@ -317,6 +320,7 @@ func (r *courseRepository) Update(ctx context.Context, course *entity.Course) er
 			"prerequisite": model.Prerequisite,
 			"semester":     model.Semester,
 			"year":         model.Year,
+			"tag":          model.Tag,
 			"sections":     model.Sections,
 			"updated_at":   model.UpdatedAt,
 		},

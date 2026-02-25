@@ -613,6 +613,10 @@ paths:
         in: query
         name: limit
         type: integer
+      - description: Search by code, name_en, or name_th
+        in: query
+        name: search
+        type: string
       produces:
       - application/json
       responses:

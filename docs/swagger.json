@@ -373,6 +373,12 @@
                         "description": "Items per page (default 10, 0=all)",
                         "name": "limit",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by code, name_en, or name_th",
+                        "name": "search",
+                        "in": "query"
                     }
                 ],
                 "responses": {

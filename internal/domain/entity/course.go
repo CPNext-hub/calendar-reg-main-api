@@ -4,6 +4,14 @@ import (
 	"fmt"
 )
 
+// CourseTag represents the type of a course.
+type CourseTag string
+
+const (
+	CourseTagRequired CourseTag = "required" // วิชาหลัก
+	CourseTagElective CourseTag = "elective" // วิชาเลือกเสรี
+)
+
 // Course represents a university course.
 type Course struct {
 	BaseEntity
@@ -16,6 +24,7 @@ type Course struct {
 	Prerequisite string    // e.g., "CP353002 หรือ SC313002"
 	Semester     int       // e.g., 2
 	Year         int       // e.g., 2568
+	Tag          CourseTag // e.g., "required" (วิชาหลัก) or "elective" (วิชาเลือกเสรี)
 	Sections     []Section // multiple sections per course
 }
 

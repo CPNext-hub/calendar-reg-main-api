@@ -25,6 +25,7 @@ type UpdateCourseRequest struct {
 	Prerequisite string                 `json:"prerequisite,omitempty"`
 	Semester     int                    `json:"semester"`
 	Year         int                    `json:"year"`
+	Tag          string                 `json:"tag,omitempty"`
 	Sections     []UpdateSectionRequest `json:"sections"`
 }
 
@@ -95,6 +96,7 @@ func (r *UpdateCourseRequest) ToEntity(code string) *entity.Course {
 		Prerequisite: r.Prerequisite,
 		Semester:     r.Semester,
 		Year:         r.Year,
+		Tag:          entity.CourseTag(r.Tag),
 		Sections:     sections,
 	}
 }
@@ -225,6 +227,7 @@ type CourseResponse struct {
 	Prerequisite string            `json:"prerequisite,omitempty"`
 	Semester     int               `json:"semester"`
 	Year         int               `json:"year"`
+	Tag          string            `json:"tag,omitempty"`
 	UpdatedAt    string            `json:"updated_at"`
 	Sections     []SectionResponse `json:"sections"`
 }
@@ -302,6 +305,7 @@ func ToCourseResponse(c *entity.Course) *CourseResponse {
 		Prerequisite: c.Prerequisite,
 		Semester:     c.Semester,
 		Year:         c.Year,
+		Tag:          string(c.Tag),
 		Sections:     sections,
 		UpdatedAt:    c.UpdatedAt.Format(time.RFC3339),
 	}
@@ -328,6 +332,7 @@ type CourseSummaryResponse struct {
 	Prerequisite string `json:"prerequisite,omitempty"`
 	Semester     int    `json:"semester"`
 	Year         int    `json:"year"`
+	Tag          string `json:"tag,omitempty"`
 	UpdatedAt    string `json:"updated_at"`
 }
 
@@ -347,6 +352,7 @@ func ToCourseSummaryResponse(c *entity.Course) *CourseSummaryResponse {
 		Prerequisite: c.Prerequisite,
 		Semester:     c.Semester,
 		Year:         c.Year,
+		Tag:          string(c.Tag),
 		UpdatedAt:    c.UpdatedAt.Format(time.RFC3339),
 	}
 }
