@@ -238,6 +238,29 @@ definitions:
       seats:
         type: integer
     type: object
+  dto.UpdateCourseRequest:
+    properties:
+      credits:
+        type: string
+      department:
+        type: string
+      faculty:
+        type: string
+      name_en:
+        type: string
+      name_th:
+        type: string
+      prerequisite:
+        type: string
+      sections:
+        items:
+          $ref: '#/definitions/dto.UpdateSectionRequest'
+        type: array
+      semester:
+        type: integer
+      year:
+        type: integer
+    type: object
   dto.UpdateCronJobRequest:
     properties:
       acadyear:
@@ -255,6 +278,66 @@ definitions:
       semester:
         type: integer
     type: object
+  dto.UpdateScheduleRequest:
+    properties:
+      day:
+        type: string
+      end_time:
+        type: string
+      room:
+        type: string
+      start_time:
+        type: string
+      type:
+        type: string
+    type: object
+  dto.UpdateSectionRequest:
+    properties:
+      campus:
+        type: string
+      exam_end:
+        type: string
+      exam_start:
+        type: string
+      id:
+        type: string
+      instructor:
+        items:
+          type: string
+        type: array
+      midterm_end:
+        type: string
+      midterm_start:
+        type: string
+      note:
+        type: string
+      number:
+        type: string
+      program:
+        type: string
+      reserved_for:
+        items:
+          type: string
+        type: array
+      schedules:
+        items:
+          $ref: '#/definitions/dto.UpdateScheduleRequest'
+        type: array
+      seats:
+        type: integer
+    type: object
+  dto.UserResponse:
+    properties:
+      id:
+        example: 60f7b3b3b3b3b3b3b3b3b3b3
+        type: string
+      role:
+        example: admin
+        type: string
+      username:
+        example: admin1
+        type: string
+    type: object
   dto.VersionResponse:
     properties:
       env:
@@ -262,6 +345,11 @@ definitions:
       name:
         type: string
       version:
+        type: string
+    type: object
+  handler.UpdateUserRoleRequest:
+    properties:
+      role:
         type: string
     type: object
   queue.QueueStatus:
@@ -317,6 +405,24 @@ paths:
           description: Internal Server Error
           schema: {}
       summary: Login
+      tags:
+      - auth
+  /auth/me:
+    get:
+      description: Returns the authenticated user's profile from JWT claims.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserResponse'
+        "401":
+          description: Unauthorized
+          schema: {}
+      security:
+      - BearerAuth: []
+      summary: Get current user
       tags:
       - auth
   /auth/register:
@@ -418,6 +524,79 @@ paths:
       security:
       - BearerAuth: []
       summary: Create a user (admin)
+      tags:
+      - auth
+  /auth/users/{id}:
+    delete:
+      description: Soft-delete a user by ID. Requires superadmin or admin JWT.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Bad Request
+          schema: {}
+        "403":
+          description: Forbidden
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - BearerAuth: []
+      summary: Delete user
+      tags:
+      - auth
+  /auth/users/{id}/role:
+    patch:
+      consumes:
+      - application/json
+      description: Change a user's role. Requires superadmin or admin JWT.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Role Update Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UpdateUserRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserResponse'
+        "400":
+          description: Bad Request
+          schema: {}
+        "403":
+          description: Forbidden
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - BearerAuth: []
+      summary: Update user role
       tags:
       - auth
   /courses:
@@ -533,6 +712,54 @@ paths:
           description: Internal Server Error
           schema: {}
       summary: Get course by code
+      tags:
+      - courses
+    put:
+      consumes:
+      - application/json
+      description: Update course metadata and sections. Requires superadmin or admin
+        JWT.
+      parameters:
+      - description: Course Code
+        in: path
+        name: code
+        required: true
+        type: string
+      - description: Academic Year
+        in: query
+        name: acadyear
+        required: true
+        type: integer
+      - description: Semester
+        in: query
+        name: semester
+        required: true
+        type: integer
+      - description: Course Update Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateCourseRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CourseResponse'
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - BearerAuth: []
+      summary: Update course
       tags:
       - courses
   /cronjobs:

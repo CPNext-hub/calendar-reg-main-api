@@ -29,6 +29,8 @@ type AuthUsecase interface {
 	Login(ctx context.Context, username, password string) (string, error)
 	SeedSuperAdmin(ctx context.Context, username, password string)
 	GetUsersPaginated(ctx context.Context, pq pagination.PaginationQuery) (*pagination.PaginatedResult[*entity.User], error)
+	DeleteUser(ctx context.Context, id string, callerRole string, callerID string) error
+	UpdateUserRole(ctx context.Context, id string, newRole string, callerRole string, callerID string) (*entity.User, error)
 }
 
 type authUsecase struct {
@@ -161,4 +163,73 @@ func (u *authUsecase) GetUsersPaginated(ctx context.Context, pq pagination.Pagin
 	}
 	result := pagination.NewResult(items, pq.Page, pq.Limit, total)
 	return &result, nil
+}
+
+// DeleteUser soft-deletes a user. Callers cannot delete themselves or superadmins (unless caller is superadmin).
+func (u *authUsecase) DeleteUser(ctx context.Context, id string, callerRole string, callerID string) error {
+	if id == callerID {
+		return errors.New("cannot delete your own account")
+	}
+
+	target, err := u.repo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if target == nil {
+		return errors.New("user not found")
+	}
+
+	// Only superadmin can delete superadmin accounts
+	if target.Role == constants.RoleSuperAdmin {
+		return errors.New("superadmin accounts cannot be deleted")
+	}
+
+	// Admin can only delete student accounts
+	if callerRole == constants.RoleAdmin && target.Role == constants.RoleAdmin {
+		return errors.New("admin cannot delete another admin account")
+	}
+
+	return u.repo.DeleteUser(ctx, id)
+}
+
+// UpdateUserRole changes the role of a user. Callers cannot change their own role.
+func (u *authUsecase) UpdateUserRole(ctx context.Context, id string, newRole string, callerRole string, callerID string) (*entity.User, error) {
+	if id == callerID {
+		return nil, errors.New("cannot change your own role")
+	}
+
+	// Validate new role
+	if !constants.ValidRoles[newRole] {
+		return nil, errors.New("invalid role")
+	}
+
+	// Only superadmin can assign/change superadmin role
+	if newRole == constants.RoleSuperAdmin {
+		return nil, errors.New("cannot assign superadmin role")
+	}
+
+	target, err := u.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if target == nil {
+		return nil, errors.New("user not found")
+	}
+
+	// Superadmin accounts cannot have their role changed
+	if target.Role == constants.RoleSuperAdmin {
+		return nil, errors.New("superadmin role cannot be changed")
+	}
+
+	// Admin can only manage students
+	if callerRole == constants.RoleAdmin && target.Role == constants.RoleAdmin {
+		return nil, errors.New("admin cannot change another admin's role")
+	}
+
+	if err := u.repo.UpdateUserRole(ctx, id, newRole); err != nil {
+		return nil, err
+	}
+
+	target.Role = newRole
+	return target, nil
 }

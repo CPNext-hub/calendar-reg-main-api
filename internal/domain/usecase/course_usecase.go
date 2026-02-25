@@ -24,8 +24,9 @@ var (
 type CourseUsecase interface {
 	CreateCourse(ctx context.Context, course *entity.Course) error
 	GetAllCourses(ctx context.Context) ([]*entity.Course, error)
-	GetCoursesPaginated(ctx context.Context, pq pagination.PaginationQuery) (*pagination.PaginatedResult[*entity.Course], error)
+	GetCoursesPaginated(ctx context.Context, pq pagination.PaginationQuery, search string) (*pagination.PaginatedResult[*entity.Course], error)
 	GetCourseByCode(ctx context.Context, code string, acadyear, semester int) (*entity.Course, error)
+	UpdateCourse(ctx context.Context, course *entity.Course) error
 	DeleteCourse(ctx context.Context, code string, year, semester int) error
 	ProcessRefreshJob(job queue.RefreshJob)
 }
@@ -56,8 +57,8 @@ func (u *courseUsecase) GetAllCourses(ctx context.Context) ([]*entity.Course, er
 	return u.repo.GetAll(ctx)
 }
 
-func (u *courseUsecase) GetCoursesPaginated(ctx context.Context, pq pagination.PaginationQuery) (*pagination.PaginatedResult[*entity.Course], error) {
-	items, total, err := u.repo.GetPaginated(ctx, pq.Page, pq.Limit, false)
+func (u *courseUsecase) GetCoursesPaginated(ctx context.Context, pq pagination.PaginationQuery, search string) (*pagination.PaginatedResult[*entity.Course], error) {
+	items, total, err := u.repo.GetPaginated(ctx, pq.Page, pq.Limit, false, search)
 	if err != nil {
 		return nil, err
 	}
@@ -180,6 +181,31 @@ func isToday(t time.Time) bool {
 	y1, m1, d1 := now.Date()
 	y2, m2, d2 := t.Date()
 	return y1 == y2 && m1 == m2 && d1 == d2
+}
+
+func (u *courseUsecase) UpdateCourse(ctx context.Context, course *entity.Course) error {
+	existing, err := u.repo.GetByKey(ctx, course.Code, course.Year, course.Semester)
+	if err != nil {
+		return err
+	}
+	if existing == nil {
+		return errors.New("course not found")
+	}
+	// Preserve identity fields from the stored record.
+	course.ID = existing.ID
+	course.CreatedAt = existing.CreatedAt
+	if err := u.repo.Update(ctx, course); err != nil {
+		return err
+	}
+	// Fetch the updated record so the caller gets the persisted state (e.g. UpdatedAt).
+	updated, err := u.repo.GetByKey(ctx, course.Code, course.Year, course.Semester)
+	if err != nil {
+		return err
+	}
+	if updated != nil {
+		*course = *updated
+	}
+	return nil
 }
 
 func (u *courseUsecase) DeleteCourse(ctx context.Context, code string, year, semester int) error {
