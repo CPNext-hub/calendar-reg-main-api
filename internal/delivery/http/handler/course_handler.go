@@ -64,18 +64,20 @@ func (h *CourseHandler) CreateCourse(c *fiber.Ctx) error {
 // @Produce json
 // @Param page query int false "Page number (default 1)"
 // @Param limit query int false "Items per page (default 10, 0=all)"
+// @Param search query string false "Search by code, name_en, or name_th"
 // @Success 200 {object} interface{}
 // @Failure 500 {object} interface{}
 // @Router /courses [get]
 func (h *CourseHandler) GetCourses(c *fiber.Ctx) error {
 	page, _ := strconv.Atoi(c.Query("page"))
 	limit, _ := strconv.Atoi(c.Query("limit"))
+	search := c.Query("search")
 	pq := pagination.FromQuery(page, limit)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	result, err := h.usecase.GetCoursesPaginated(ctx, pq)
+	result, err := h.usecase.GetCoursesPaginated(ctx, pq, search)
 	if err != nil {
 		return response.InternalError(adapter.NewFiberResponder(c), err.Error())
 	}
@@ -122,6 +124,58 @@ func (h *CourseHandler) GetCourse(c *fiber.Ctx) error {
 		default:
 			return response.InternalError(adapter.NewFiberResponder(c), err.Error())
 		}
+	}
+
+	return response.OK(adapter.NewFiberResponder(c), dto.ToCourseResponse(course))
+}
+
+// UpdateCourse updates an existing course's details.
+// @Summary Update course
+// @Description Update course metadata and sections. Requires superadmin or admin JWT.
+// @Tags courses
+// @Accept json
+// @Produce json
+// @Param code path string true "Course Code"
+// @Param acadyear query int true "Academic Year"
+// @Param semester query int true "Semester"
+// @Param request body dto.UpdateCourseRequest true "Course Update Request"
+// @Security BearerAuth
+// @Success 200 {object} dto.CourseResponse
+// @Failure 400 {object} interface{}
+// @Failure 404 {object} interface{}
+// @Failure 500 {object} interface{}
+// @Router /courses/{code} [put]
+func (h *CourseHandler) UpdateCourse(c *fiber.Ctx) error {
+	code := c.Params("code")
+	acadyear, _ := strconv.Atoi(c.Query("acadyear"))
+	semester, _ := strconv.Atoi(c.Query("semester"))
+
+	if acadyear == 0 || semester == 0 {
+		return response.BadRequest(adapter.NewFiberResponder(c), "Missing or invalid acadyear/semester")
+	}
+
+	var req dto.UpdateCourseRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.BadRequest(adapter.NewFiberResponder(c), "Invalid request body")
+	}
+
+	if req.NameEN == "" || req.Credits == "" {
+		return response.BadRequest(adapter.NewFiberResponder(c), "Missing required fields: name_en, credits")
+	}
+
+	// Override year/semester from query params to match the existing record.
+	req.Year = acadyear
+	req.Semester = semester
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	course := req.ToEntity(code)
+	if err := h.usecase.UpdateCourse(ctx, course); err != nil {
+		if err.Error() == "course not found" {
+			return response.NotFound(adapter.NewFiberResponder(c), err.Error())
+		}
+		return response.InternalError(adapter.NewFiberResponder(c), err.Error())
 	}
 
 	return response.OK(adapter.NewFiberResponder(c), dto.ToCourseResponse(course))

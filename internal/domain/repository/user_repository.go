@@ -10,5 +10,8 @@ import (
 type UserRepository interface {
 	Create(ctx context.Context, user *entity.User) error
 	FindByUsername(ctx context.Context, username string) (*entity.User, error)
+	FindByID(ctx context.Context, id string) (*entity.User, error)
 	GetPaginated(ctx context.Context, page, limit int) ([]*entity.User, int64, error)
+	DeleteUser(ctx context.Context, id string) error
+	UpdateUserRole(ctx context.Context, id string, role string) error
 }

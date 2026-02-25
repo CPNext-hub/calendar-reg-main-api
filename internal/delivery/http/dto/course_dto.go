@@ -12,6 +12,95 @@ import (
 
 // --- Request DTOs ---
 
+// UpdateCourseRequest represents the request body for updating a course.
+// Unlike CreateCourseRequest, exam/midterm dates are accepted as pre-parsed
+// datetime strings ("YYYY-MM-DD HH:mm:ss") so the admin edit path does not
+// need to re-parse Thai-formatted date strings.
+type UpdateCourseRequest struct {
+	NameEN       string                 `json:"name_en"`
+	NameTH       string                 `json:"name_th"`
+	Faculty      string                 `json:"faculty"`
+	Department   string                 `json:"department,omitempty"`
+	Credits      string                 `json:"credits"`
+	Prerequisite string                 `json:"prerequisite,omitempty"`
+	Semester     int                    `json:"semester"`
+	Year         int                    `json:"year"`
+	Tag          string                 `json:"tag,omitempty"`
+	Sections     []UpdateSectionRequest `json:"sections"`
+}
+
+// UpdateSectionRequest represents a section in an update request.
+type UpdateSectionRequest struct {
+	ID           string                  `json:"id,omitempty"`
+	Number       string                  `json:"number"`
+	Schedules    []UpdateScheduleRequest `json:"schedules"`
+	Seats        int                     `json:"seats"`
+	Instructor   []string                `json:"instructor"`
+	ExamStart    string                  `json:"exam_start,omitempty"`
+	ExamEnd      string                  `json:"exam_end,omitempty"`
+	MidtermStart string                  `json:"midterm_start,omitempty"`
+	MidtermEnd   string                  `json:"midterm_end,omitempty"`
+	Note         string                  `json:"note,omitempty"`
+	ReservedFor  []string                `json:"reserved_for,omitempty"`
+	Campus       string                  `json:"campus,omitempty"`
+	Program      string                  `json:"program,omitempty"`
+}
+
+// UpdateScheduleRequest represents a schedule slot in an update request.
+type UpdateScheduleRequest struct {
+	Day       string `json:"day"`
+	StartTime string `json:"start_time"`
+	EndTime   string `json:"end_time"`
+	Room      string `json:"room"`
+	Type      string `json:"type"`
+}
+
+// ToEntity converts an UpdateCourseRequest to a domain entity given the course code.
+func (r *UpdateCourseRequest) ToEntity(code string) *entity.Course {
+	sections := make([]entity.Section, len(r.Sections))
+	for i, s := range r.Sections {
+		schedules := make([]entity.Schedule, len(s.Schedules))
+		for j, sc := range s.Schedules {
+			schedules[j] = entity.Schedule{
+				Day:       sc.Day,
+				StartTime: sc.StartTime,
+				EndTime:   sc.EndTime,
+				Room:      sc.Room,
+				Type:      sc.Type,
+			}
+		}
+		sections[i] = entity.Section{
+			ID:           s.ID,
+			Number:       s.Number,
+			Schedules:    schedules,
+			Seats:        s.Seats,
+			Instructor:   s.Instructor,
+			ExamStart:    s.ExamStart,
+			ExamEnd:      s.ExamEnd,
+			MidtermStart: s.MidtermStart,
+			MidtermEnd:   s.MidtermEnd,
+			Note:         s.Note,
+			ReservedFor:  s.ReservedFor,
+			Campus:       s.Campus,
+			Program:      s.Program,
+		}
+	}
+
+	return &entity.Course{
+		Code:         code,
+		NameEN:       r.NameEN,
+		NameTH:       r.NameTH,
+		Faculty:      r.Faculty,
+		Department:   r.Department,
+		Credits:      r.Credits,
+		Prerequisite: r.Prerequisite,
+		Semester:     r.Semester,
+		Year:         r.Year,
+		Tag:          entity.CourseTag(r.Tag),
+		Sections:     sections,
+	}
+}
+
 // CreateCourseRequest represents the request body for creating a course.
 type CreateCourseRequest struct {
 	Code         string           `json:"code"`
@@ -138,6 +227,7 @@ type CourseResponse struct {
 	Prerequisite string            `json:"prerequisite,omitempty"`
 	Semester     int               `json:"semester"`
 	Year         int               `json:"year"`
+	Tag          string            `json:"tag,omitempty"`
 	UpdatedAt    string            `json:"updated_at"`
 	Sections     []SectionResponse `json:"sections"`
 }
@@ -215,6 +305,7 @@ func ToCourseResponse(c *entity.Course) *CourseResponse {
 		Prerequisite: c.Prerequisite,
 		Semester:     c.Semester,
 		Year:         c.Year,
+		Tag:          string(c.Tag),
 		Sections:     sections,
 		UpdatedAt:    c.UpdatedAt.Format(time.RFC3339),
 	}
@@ -241,6 +332,7 @@ type CourseSummaryResponse struct {
 	Prerequisite string `json:"prerequisite,omitempty"`
 	Semester     int    `json:"semester"`
 	Year         int    `json:"year"`
+	Tag          string `json:"tag,omitempty"`
 	UpdatedAt    string `json:"updated_at"`
 }
 
@@ -260,6 +352,7 @@ func ToCourseSummaryResponse(c *entity.Course) *CourseSummaryResponse {
 		Prerequisite: c.Prerequisite,
 		Semester:     c.Semester,
 		Year:         c.Year,
+		Tag:          string(c.Tag),
 		UpdatedAt:    c.UpdatedAt.Format(time.RFC3339),
 	}
 }

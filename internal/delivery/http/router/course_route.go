@@ -18,8 +18,9 @@ func RegisterCourseRoutes(api fiber.Router, courseH *handler.CourseHandler, queu
 	// Protected: superadmin and admin
 	adminCourses := courses.Group("", middleware.JWTAuth(jwtSecret), middleware.RequireRole(constants.RoleSuperAdmin, constants.RoleAdmin))
 	adminCourses.Post("/", courseH.CreateCourse)
+	adminCourses.Put("/:code", courseH.UpdateCourse)
 	adminCourses.Delete("/:code", courseH.DeleteCourse)
 
-	// Queue status
-	api.Get("/queue/status", queueH.GetStatus)
+	// Queue status (admin only)
+	api.Get("/queue/status", middleware.JWTAuth(jwtSecret), middleware.RequireRole(constants.RoleSuperAdmin, constants.RoleAdmin), queueH.GetStatus)
 }

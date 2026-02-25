@@ -15,6 +15,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// UpdateUserRoleRequest is the request body for updating a user's role.
+type UpdateUserRoleRequest struct {
+	Role string `json:"role"`
+}
+
 // AuthHandler handles authentication-related HTTP requests.
 type AuthHandler struct {
 	usecase usecase.AuthUsecase
@@ -195,4 +200,125 @@ func (h *AuthHandler) GetUsers(c *fiber.Ctx) error {
 		dto.ToUserResponses(result.Items),
 		result.GetMeta(),
 	)
+}
+
+// DeleteUser soft-deletes a user by ID (admin-only).
+// @Summary Delete user
+// @Description Soft-delete a user by ID. Requires superadmin or admin JWT.
+// @Tags auth
+// @Produce json
+// @Param id path string true "User ID"
+// @Security BearerAuth
+// @Success 200 {object} interface{}
+// @Failure 400 {object} interface{}
+// @Failure 403 {object} interface{}
+// @Failure 404 {object} interface{}
+// @Failure 500 {object} interface{}
+// @Router /auth/users/{id} [delete]
+func (h *AuthHandler) DeleteUser(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	claims, ok := c.Locals("user").(jwt.MapClaims)
+	if !ok {
+		return response.Unauthorized(adapter.NewFiberResponder(c), "Authentication required")
+	}
+	callerRole, _ := claims["role"].(string)
+	callerID, _ := claims["sub"].(string)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := h.usecase.DeleteUser(ctx, id, callerRole, callerID); err != nil {
+		switch err.Error() {
+		case "user not found":
+			return response.NotFound(adapter.NewFiberResponder(c), err.Error())
+		case "cannot delete your own account",
+			"superadmin accounts cannot be deleted",
+			"admin cannot delete another admin account":
+			return response.Forbidden(adapter.NewFiberResponder(c), err.Error())
+		}
+		return response.InternalError(adapter.NewFiberResponder(c), err.Error())
+	}
+
+	return response.OK(adapter.NewFiberResponder(c), map[string]string{"message": "User deleted successfully"})
+}
+
+// UpdateUserRole updates a user's role (admin-only).
+// @Summary Update user role
+// @Description Change a user's role. Requires superadmin or admin JWT.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param request body UpdateUserRoleRequest true "Role Update Request"
+// @Security BearerAuth
+// @Success 200 {object} dto.UserResponse
+// @Failure 400 {object} interface{}
+// @Failure 403 {object} interface{}
+// @Failure 404 {object} interface{}
+// @Failure 500 {object} interface{}
+// @Router /auth/users/{id}/role [patch]
+func (h *AuthHandler) UpdateUserRole(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	var req UpdateUserRoleRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.BadRequest(adapter.NewFiberResponder(c), "Invalid request body")
+	}
+	if req.Role == "" {
+		return response.BadRequest(adapter.NewFiberResponder(c), "Role is required")
+	}
+
+	claims, ok := c.Locals("user").(jwt.MapClaims)
+	if !ok {
+		return response.Unauthorized(adapter.NewFiberResponder(c), "Authentication required")
+	}
+	callerRole, _ := claims["role"].(string)
+	callerID, _ := claims["sub"].(string)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	user, err := h.usecase.UpdateUserRole(ctx, id, req.Role, callerRole, callerID)
+	if err != nil {
+		switch err.Error() {
+		case "user not found":
+			return response.NotFound(adapter.NewFiberResponder(c), err.Error())
+		case "invalid role",
+			"cannot assign superadmin role",
+			"cannot change your own role",
+			"superadmin role cannot be changed",
+			"admin cannot change another admin's role":
+			return response.Forbidden(adapter.NewFiberResponder(c), err.Error())
+		}
+		return response.InternalError(adapter.NewFiberResponder(c), err.Error())
+	}
+
+	return response.OK(adapter.NewFiberResponder(c), dto.ToUserResponse(user))
+}
+
+// GetMe returns the currently authenticated user's info.
+// @Summary Get current user
+// @Description Returns the authenticated user's profile from JWT claims.
+// @Tags auth
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} dto.UserResponse
+// @Failure 401 {object} interface{}
+// @Router /auth/me [get]
+func (h *AuthHandler) GetMe(c *fiber.Ctx) error {
+	claims, ok := c.Locals("user").(jwt.MapClaims)
+	if !ok {
+		return response.Unauthorized(adapter.NewFiberResponder(c), "Authentication required")
+	}
+
+	id, _ := claims["sub"].(string)
+	username, _ := claims["username"].(string)
+	role, _ := claims["role"].(string)
+
+	return response.OK(adapter.NewFiberResponder(c), dto.UserResponse{
+		ID:       id,
+		Username: username,
+		Role:     role,
+	})
 }

@@ -33,12 +33,30 @@ func (m *mockUserRepo) FindByUsername(ctx context.Context, username string) (*en
 	return args.Get(0).(*entity.User), args.Error(1)
 }
 
+func (m *mockUserRepo) FindByID(ctx context.Context, id string) (*entity.User, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.User), args.Error(1)
+}
+
 func (m *mockUserRepo) GetPaginated(ctx context.Context, page, limit int) ([]*entity.User, int64, error) {
 	args := m.Called(ctx, page, limit)
 	if args.Get(0) == nil {
 		return nil, 0, args.Error(2)
 	}
 	return args.Get(0).([]*entity.User), args.Get(1).(int64), args.Error(2)
+}
+
+func (m *mockUserRepo) DeleteUser(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
+func (m *mockUserRepo) UpdateUserRole(ctx context.Context, id string, role string) error {
+	args := m.Called(ctx, id, role)
+	return args.Error(0)
 }
 
 // ----- Tests -----

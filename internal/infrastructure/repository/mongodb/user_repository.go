@@ -103,6 +103,24 @@ func (r *userRepository) FindByUsername(ctx context.Context, username string) (*
 	return model.toEntity(), nil
 }
 
+func (r *userRepository) FindByID(ctx context.Context, id string) (*entity.User, error) {
+	oid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, errors.New("invalid user id")
+	}
+
+	var model userModel
+	filter := bson.M{"_id": oid, "deleted_at": bson.M{"$exists": false}}
+	err = r.db.Collection(userCollection).FindOne(ctx, filter).Decode(&model)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return model.toEntity(), nil
+}
+
 func (r *userRepository) GetPaginated(ctx context.Context, page, limit int) ([]*entity.User, int64, error) {
 	col := r.db.Collection(userCollection)
 
@@ -134,4 +152,54 @@ func (r *userRepository) GetPaginated(ctx context.Context, page, limit int) ([]*
 		users[i] = m.toEntity()
 	}
 	return users, total, nil
+}
+
+// DeleteUser performs a soft-delete by setting the deleted_at field.
+func (r *userRepository) DeleteUser(ctx context.Context, id string) error {
+	oid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return errors.New("invalid user id")
+	}
+
+	filter := bson.M{"_id": oid, "deleted_at": bson.M{"$exists": false}}
+	update := bson.M{
+		"$set": bson.M{
+			"deleted_at": time.Now(),
+			"updated_at": time.Now(),
+		},
+	}
+
+	result, err := r.db.Collection(userCollection).UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount == 0 {
+		return errors.New("user not found")
+	}
+	return nil
+}
+
+// UpdateUserRole updates the role of a user by ID.
+func (r *userRepository) UpdateUserRole(ctx context.Context, id string, role string) error {
+	oid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		return errors.New("invalid user id")
+	}
+
+	filter := bson.M{"_id": oid, "deleted_at": bson.M{"$exists": false}}
+	update := bson.M{
+		"$set": bson.M{
+			"role":       role,
+			"updated_at": time.Now(),
+		},
+	}
+
+	result, err := r.db.Collection(userCollection).UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount == 0 {
+		return errors.New("user not found")
+	}
+	return nil
 }

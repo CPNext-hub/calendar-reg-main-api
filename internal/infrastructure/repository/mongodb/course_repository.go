@@ -26,6 +26,7 @@ type courseModel struct {
 	Prerequisite string         `bson:"prerequisite,omitempty"`
 	Semester     int            `bson:"semester"`
 	Year         int            `bson:"year"`
+	Tag          string         `bson:"tag,omitempty"`
 	Sections     []sectionModel `bson:"sections"`
 }
 
@@ -115,6 +116,7 @@ func (m *courseModel) toEntity() *entity.Course {
 		Prerequisite: m.Prerequisite,
 		Semester:     m.Semester,
 		Year:         m.Year,
+		Tag:          entity.CourseTag(m.Tag),
 		Sections:     sections,
 	}
 }
@@ -175,6 +177,7 @@ func toCourseModel(e *entity.Course) *courseModel {
 		Prerequisite: e.Prerequisite,
 		Semester:     e.Semester,
 		Year:         e.Year,
+		Tag:          string(e.Tag),
 		Sections:     sections,
 	}
 	m.CreatedAt = e.CreatedAt
@@ -237,11 +240,24 @@ func (r *courseRepository) GetAll(ctx context.Context) ([]*entity.Course, error)
 	return courses, nil
 }
 
-func (r *courseRepository) GetPaginated(ctx context.Context, page, limit int, includeSections bool) ([]*entity.Course, int64, error) {
+func (r *courseRepository) GetPaginated(ctx context.Context, page, limit int, includeSections bool, search string) ([]*entity.Course, int64, error) {
 	col := r.db.Collection(courseCollection)
 
+	// Build base filter (not deleted + optional text search).
+	filter := bson.D{{Key: "deleted_at", Value: bson.M{"$exists": false}}}
+	if search != "" {
+		filter = append(filter, bson.E{
+			Key: "$or",
+			Value: bson.A{
+				bson.M{"code": bson.M{"$regex": search, "$options": "i"}},
+				bson.M{"name_en": bson.M{"$regex": search, "$options": "i"}},
+				bson.M{"name_th": bson.M{"$regex": search, "$options": "i"}},
+			},
+		})
+	}
+
 	// Count total matching documents.
-	total, err := col.CountDocuments(ctx, notDeleted)
+	total, err := col.CountDocuments(ctx, filter)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -258,7 +274,7 @@ func (r *courseRepository) GetPaginated(ctx context.Context, page, limit int, in
 	}
 	// limit == 0 → no skip/limit → return all
 
-	cursor, err := col.Find(ctx, notDeleted, opts)
+	cursor, err := col.Find(ctx, filter, opts)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -304,6 +320,7 @@ func (r *courseRepository) Update(ctx context.Context, course *entity.Course) er
 			"prerequisite": model.Prerequisite,
 			"semester":     model.Semester,
 			"year":         model.Year,
+			"tag":          model.Tag,
 			"sections":     model.Sections,
 			"updated_at":   model.UpdatedAt,
 		},
