@@ -61,7 +61,7 @@ func (m *mockCourseRepo) GetAll(_ context.Context) ([]*entity.Course, error) {
 	return m.allCourses, nil
 }
 
-func (m *mockCourseRepo) GetPaginated(_ context.Context, page, limit int, includeSections bool) ([]*entity.Course, int64, error) {
+func (m *mockCourseRepo) GetPaginated(_ context.Context, page, limit int, includeSections bool, search string) ([]*entity.Course, int64, error) {
 	if m.pagErr != nil {
 		return nil, 0, m.pagErr
 	}
@@ -180,7 +180,7 @@ func TestGetCoursesPaginated_Success(t *testing.T) {
 	uc := NewCourseUsecase(repo, nil, nil)
 
 	pq := pagination.PaginationQuery{Page: 1, Limit: 10}
-	result, err := uc.GetCoursesPaginated(context.Background(), pq)
+	result, err := uc.GetCoursesPaginated(context.Background(), pq, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -201,7 +201,7 @@ func TestGetCoursesPaginated_LimitZero(t *testing.T) {
 	uc := NewCourseUsecase(repo, nil, nil)
 
 	pq := pagination.PaginationQuery{Page: 1, Limit: 0}
-	result, err := uc.GetCoursesPaginated(context.Background(), pq)
+	result, err := uc.GetCoursesPaginated(context.Background(), pq, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -216,7 +216,7 @@ func TestGetCoursesPaginated_Error(t *testing.T) {
 	uc := NewCourseUsecase(repo, nil, nil)
 
 	pq := pagination.PaginationQuery{Page: 1, Limit: 10}
-	_, err := uc.GetCoursesPaginated(context.Background(), pq)
+	_, err := uc.GetCoursesPaginated(context.Background(), pq, "")
 	if err == nil {
 		t.Fatal("expected error")
 	}
